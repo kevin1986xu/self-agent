@@ -1,0 +1,88 @@
+# self-agent 生产部署（M3-8）。用法见 deploy/部署手册.md
+# 需要 .env：LLM_API_KEY / UAV_MCP_API_KEY / APPROVAL_ADMIN_KEY / POSTGRES_PASSWORD
+services:
+  postgres:
+    image: pgvector/pgvector:pg18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: aegra
+    volumes:
+      - pg_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d aegra"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  aegra:
+    build: { context: .., dockerfile: deploy/app/Dockerfile }
+    image: self-agent-app:latest
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment: &app-env
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/aegra
+      REDIS_URL: redis://redis:6379/0
+      LLM_API_KEY: ${LLM_API_KEY:?}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      MODEL_STRONG: ${MODEL_STRONG:-}
+      MODEL_CHEAP: ${MODEL_CHEAP:-}
+      UAV_MCP_API_KEY: ${UAV_MCP_API_KEY:-}
+      MCP_CONFIG_PATH: /app/config/mcp_config.json
+      # 可观测（可选）：OTEL_TARGETS=LANGFUSE + LANGFUSE_* 三项
+      OTEL_TARGETS: ${OTEL_TARGETS:-}
+      LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+    volumes:
+      - workspace:/data/workspace
+      - ../config:/app/config:ro
+    ports:
+      - "2027:2027"
+
+  gateway:
+    image: self-agent-app:latest
+    restart: unless-stopped
+    depends_on: [aegra]
+    command: ["uvicorn", "self_agent.gateway.app:app", "--host", "0.0.0.0", "--port", "8400"]
+    environment:
+      <<: *app-env
+      AEGRA_BASE: http://aegra:2027
+      APPROVAL_BASE: ${APPROVAL_BASE:-}
+      APPROVAL_ADMIN_KEY: ${APPROVAL_ADMIN_KEY:-}
+      GATEWAY_CORS: ${GATEWAY_CORS:-http://localhost:3000}
+      DINGTALK_APP_SECRET: ${DINGTALK_APP_SECRET:-}
+    volumes:
+      - workspace:/data/workspace
+    ports:
+      - "8400:8400"
+
+  webui:
+    build:
+      context: ../webui
+      dockerfile_inline: |
+        FROM node:22-alpine AS build
+        WORKDIR /app
+        COPY . .
+        RUN corepack enable && npm_config_package_manager_strict=false pnpm install && pnpm build
+        FROM node:22-alpine
+        WORKDIR /app
+        COPY --from=build /app .
+        ENV PORT=3000
+        CMD ["npx", "next", "start", "-p", "3000"]
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${PUBLIC_AEGRA_URL:-http://localhost:2027}
+      NEXT_PUBLIC_ASSISTANT_ID: agent
+      NEXT_PUBLIC_GATEWAY_URL: ${PUBLIC_GATEWAY_URL:-http://localhost:8400}
+    ports:
+      - "3000:3000"
+
+volumes:
+  pg_data:
+  workspace:

@@ -95,15 +95,10 @@ def build_backend():
     - 已知限制（P0 接受）：工作区暂为全会话共享；P1 Docker 沙箱按会话隔离。
     """
     _sync_workspace()
-    venv_bin = settings.PROJECT_ROOT / ".venv" / "bin"
+    from .docker_sandbox import build_shell_backend
+
     return CompositeBackend(
-        default=WorkspaceShellBackend(
-            root_dir=settings.WORKSPACE_ROOT,
-            virtual_mode=True,
-            timeout=180,
-            env={"PATH": f"{venv_bin}:/usr/bin:/bin", "LANG": os.environ.get("LANG", "en_US.UTF-8")},
-            inherit_env=False,
-        ),
+        default=build_shell_backend(),  # SANDBOX_MODE=docker 时 execute 进容器
         routes={"/memories": StoreBackend(namespace=lambda rt: ("memories",))},
     )
 
