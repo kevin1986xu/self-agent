@@ -10,3 +10,4 @@ config/mcp_config.json
 uv.lock.bak
 .pytest_cache/
 eval_sample_result.json
+webui/
