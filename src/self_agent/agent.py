@@ -12,6 +12,7 @@ import logging
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from deepagents import create_deep_agent
+from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
 
 from . import settings
 from .audit import AuditMiddleware
@@ -55,8 +56,21 @@ LEAD_PROMPT = """\
 - 工具返回错误时如实报告，不得编造数据；
 - 高危操作（派机、起飞、建删围栏等）会要求人工确认，等待确认结果，不要重复发起。
 
+记忆：/memories/ 目录跨会话持久。用户明确的偏好（报告格式、常用片区、
+称呼习惯等）用 write_file 记到 /memories/preferences.md；会话开始处理任务前，
+如涉及个性化输出，先 read_file 查看该文件是否有相关偏好。
+
 回答使用中文。
 """
+
+
+def build_backend():
+    """文件系统路由（技术方案 4.4）：/memories 跨会话持久（宿主 store），
+    其余路径为会话内状态。namespace 暂为全局，R19 身份上线后按用户隔离。"""
+    return CompositeBackend(
+        default=StateBackend(),
+        routes={"/memories": StoreBackend(namespace=lambda rt: ("memories",))},
+    )
 
 SUBAGENTS_PATH = settings.PROJECT_ROOT / "config" / "subagents.json"
 
@@ -90,6 +104,7 @@ def build_agent(
     *,
     down_domains: list[str] | None = None,
     checkpointer: BaseCheckpointSaver | bool | None = None,
+    store=None,
     skills: list[str] | None = None,
 ):
     """组装 Deep Agent。down_domains 会写入系统提示，避免模型摸不可用工具。"""
@@ -104,8 +119,10 @@ def build_agent(
         system_prompt=prompt,
         subagents=load_subagents(tools),
         middleware=[AuditMiddleware()],
+        backend=build_backend(),
         interrupt_on=interrupts or None,
         checkpointer=checkpointer,
+        store=store,
         skills=skills,
         name="self-agent",
     )

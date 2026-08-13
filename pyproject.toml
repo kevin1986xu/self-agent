@@ -9,6 +9,7 @@ dependencies = [
     "langgraph-checkpoint-postgres==3.1.2",
     "langchain-openai>=0.3",
     "python-dotenv>=1.0",
+    "langfuse>=4.14.4",
 ]
 
 [dependency-groups]
