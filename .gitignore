@@ -13,3 +13,4 @@ eval_sample_result.json
 webui/
 vendor/
 .gstack/
+.audit.jsonl
