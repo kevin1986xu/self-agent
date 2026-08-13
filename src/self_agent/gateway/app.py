@@ -14,10 +14,14 @@ import asyncio
 import json
 import logging
 import os
+from pathlib import Path
 
 import httpx
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse
 
+from .. import settings
 from . import identity
 from .channels import CHANNELS, LocalChannel
 
@@ -27,6 +31,11 @@ AEGRA_BASE = os.environ.get("AEGRA_BASE", "http://127.0.0.1:2027").rstrip("/")
 ASSISTANT_ID = os.environ.get("ASSISTANT_ID", "agent")
 
 app = FastAPI(title="self-agent gateway")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=os.environ.get("GATEWAY_CORS", "http://localhost:3000").split(","),
+    allow_methods=["*"], allow_headers=["*"],
+)
 
 # conversation → aegra thread 映射（进程内缓存 + Aegra metadata 持久检索）
 _thread_cache: dict[str, str] = {}
@@ -162,3 +171,161 @@ async def local_outbox(conv: str):
 @app.get("/healthz")
 async def healthz():
     return {"status": "ok"}
+
+
+# ============ 工作区文件（M2-11 前端文件面板数据源） ============
+
+def _safe_workspace_path(rel: str):
+    p = (settings.WORKSPACE_ROOT / rel.lstrip("/")).resolve()
+    if not str(p).startswith(str(settings.WORKSPACE_ROOT.resolve())):
+        raise HTTPException(400, "非法路径")
+    return p
+
+
+@app.get("/files")
+async def list_files():
+    root = settings.WORKSPACE_ROOT
+    out = []
+    if root.exists():
+        for f in sorted(root.rglob("*")):
+            if f.is_file() and "skills" not in f.parts[:len(root.parts) + 1]:
+                rel = str(f.relative_to(root))
+                if rel.startswith(("skills/",)):
+                    continue
+                out.append({"path": rel, "size": f.stat().st_size,
+                            "mtime": int(f.stat().st_mtime)})
+    return {"files": out}
+
+
+@app.get("/files/download")
+async def download_file(path: str):
+    p = _safe_workspace_path(path)
+    if not p.is_file():
+        raise HTTPException(404, "文件不存在")
+    return FileResponse(p, filename=p.name)
+
+
+# ============ 技能管理 REST（M2-12） ============
+
+@app.get("/skills")
+async def api_skills():
+    from .. import skill_manager
+
+    return {"skills": skill_manager.list_skills()}
+
+
+@app.post("/skills/import")
+async def api_skill_import(payload: dict):
+    from .. import skill_manager
+
+    url = (payload.get("url") or "").strip()
+    if not url.startswith("https://github.com/"):
+        raise HTTPException(400, "仅支持 GitHub 地址（zip 上传用 /skills/upload）")
+    try:
+        return {"imported": skill_manager.import_github(url, imported_by=payload.get("by", "web"))}
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+
+@app.post("/skills/upload")
+async def api_skill_upload(file: UploadFile):
+    from .. import skill_manager
+
+    data = await file.read()
+    try:
+        return {"imported": skill_manager._import_zip_bytes(
+            data, source_type="zip", source_url=file.filename, pinned_ref=None, imported_by="web")}
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+
+@app.post("/skills/{name}/status")
+async def api_skill_status(name: str, payload: dict):
+    from .. import skill_manager
+
+    try:
+        skill_manager.set_status(name, payload["status"], reviewed_by=payload.get("by", "web"))
+    except (ValueError, AssertionError) as e:
+        raise HTTPException(400, str(e)) from e
+    return {"ok": True}
+
+
+@app.get("/skills/{name}/findings")
+async def api_skill_findings(name: str):
+    from .. import skill_manager
+
+    with skill_manager._conn() as c:
+        row = c.execute("SELECT scan_findings FROM skill_registry WHERE name=%s", (name,)).fetchone()
+    if not row:
+        raise HTTPException(404, "技能不存在")
+    return {"findings": row[0]}
+
+
+# ============ 知识库 REST（M2-12） ============
+
+@app.get("/knowledge")
+async def api_knowledge():
+    from .. import knowledge
+
+    return {"docs": knowledge.list_docs()}
+
+
+@app.post("/knowledge/upload")
+async def api_knowledge_upload(file: UploadFile):
+    import tempfile
+
+    from .. import knowledge
+
+    suffix = os.path.splitext(file.filename or "")[1]
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tf:
+        tf.write(await file.read())
+        tmp = tf.name
+    try:
+        info = knowledge.add_document(tmp, uploaded_by="web")
+        info["filename"] = file.filename
+        with knowledge._conn() as c:
+            c.execute("UPDATE knowledge_doc SET filename=%s WHERE id=%s",
+                      (file.filename, info["doc_id"]))
+        return info
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    finally:
+        os.unlink(tmp)
+
+
+@app.delete("/knowledge/{doc_id}")
+async def api_knowledge_delete(doc_id: int):
+    from .. import knowledge
+
+    knowledge.remove(doc_id)
+    return {"ok": True}
+
+
+@app.get("/knowledge/search")
+async def api_knowledge_search(q: str):
+    from .. import knowledge
+
+    return {"hits": knowledge.search(q)}
+
+
+# ============ 审批列表（M2-12） ============
+
+@app.get("/approvals")
+async def api_approvals(status: str = "pending"):
+    with identity._conn() as c:
+        rows = c.execute(
+            """SELECT a.id, a.thread_id, a.action_summary, a.status, a.created_at::text,
+                      u.display_name, u.channel
+               FROM gateway_approval a LEFT JOIN user_identity u ON u.user_id = a.user_id
+               WHERE (%s = 'all' OR a.status = %s) ORDER BY a.id DESC LIMIT 100""",
+            (status, status)).fetchall()
+    keys = ["id", "thread_id", "action", "status", "created_at", "user", "channel"]
+    return {"approvals": [dict(zip(keys, r)) for r in rows]}
+
+
+# ============ 管理台（单页应用） ============
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_page():
+    page = Path(__file__).parent / "admin.html"
+    return page.read_text()

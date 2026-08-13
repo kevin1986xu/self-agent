@@ -10,8 +10,10 @@ config/mcp_config.json
 uv.lock.bak
 .pytest_cache/
 eval_sample_result.json
-webui/
 vendor/
 .gstack/
 .audit.jsonl
 .skill_library/
+webui/node_modules/
+webui/.next/
+webui/.env
