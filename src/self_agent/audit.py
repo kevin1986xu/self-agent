@@ -35,11 +35,20 @@ CREATE TABLE IF NOT EXISTS self_agent_audit (
 _FALLBACK = Path(os.environ.get("AUDIT_FALLBACK_PATH", settings.PROJECT_ROOT / ".audit.jsonl"))
 
 
+import re
+
+_SECRET_KEYS = re.compile(
+    r'("(?:confirm_token|api_key|apikey|token|secret|password|authorization)[^"]*"\s*:\s*")[^"]+(")',
+    re.I,
+)
+
+
 def _digest(args: Any, limit: int = 500) -> str:
     try:
         blob = json.dumps(args, ensure_ascii=False, default=str)
     except (TypeError, ValueError):
         blob = str(args)
+    blob = _SECRET_KEYS.sub(r"\1***\2", blob)  # 凭据/令牌类字段一律打码（M3-9）
     return blob[:limit]
 
 
