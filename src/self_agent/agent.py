@@ -131,6 +131,26 @@ def load_subagents(tools: list) -> list[dict]:
     return subagents
 
 
+def _knowledge_tool():
+    """知识库检索工具（R16）。无 DATABASE_URL 时不挂载。"""
+    if not os.environ.get("DATABASE_URL"):
+        return None
+    from langchain_core.tools import tool
+
+    @tool
+    def search_knowledge(query: str) -> str:
+        """检索知识库（巡检规范/飞行手册/历史报告等已入库文档）。
+        涉及规程、限值、操作标准的问题，先用本工具查依据再回答，并注明出处文件名。"""
+        from . import knowledge
+
+        hits = knowledge.search(query)
+        if not hits:
+            return "知识库中未找到相关内容。"
+        return "\n---\n".join(f"[{h['file']} 第{h['seq']}块] {h['content']}" for h in hits)
+
+    return search_knowledge
+
+
 def build_agent(
     tools: list,
     *,
@@ -140,6 +160,9 @@ def build_agent(
     skills: list[str] | None = None,
 ):
     """组装 Deep Agent。down_domains 会写入系统提示，避免模型摸不可用工具。"""
+    kt = _knowledge_tool()
+    if kt is not None:
+        tools = list(tools) + [kt]
     prompt = LEAD_PROMPT
     if down_domains:
         prompt += f"\n注意：以下工具域当前不可用，不要尝试调用：{', '.join(down_domains)}。\n"
