@@ -47,7 +47,7 @@ async def run_turn(agent, config, payload, seen):
         for intr in interrupts:
             print(f"\n⚠ 高危操作待确认: {intr.value}")
         ans = input("批准执行? [y/N] ").strip().lower()
-        decision = {"type": "accept"} if ans == "y" else {"type": "reject"}
+        decision = {"type": "approve"} if ans == "y" else {"type": "reject", "message": "用户拒绝"}
         payload = Command(resume={"decisions": [decision]})
 
 

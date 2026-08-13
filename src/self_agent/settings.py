@@ -9,13 +9,15 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 load_dotenv(PROJECT_ROOT / ".env")
 
-# LLM（DashScope OpenAI 兼容模式；api_key 必须显式传，见技术方案 4.8）
+# LLM（阿里 token plan 的 OpenAI 兼容端点；api_key 必须显式传，见技术方案 4.8。
+# 与既有 deerflow/config.yaml 的生效配置对齐：qwen3.7-plus @ token-plan）
 DASHSCOPE_API_KEY = os.environ.get("DASHSCOPE_API_KEY", "")
 DASHSCOPE_BASE_URL = os.environ.get(
-    "DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    "DASHSCOPE_BASE_URL",
+    "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
 )
-MODEL_STRONG = os.environ.get("MODEL_STRONG", "qwen3-max")
-MODEL_CHEAP = os.environ.get("MODEL_CHEAP", "qwen-flash")
+MODEL_STRONG = os.environ.get("MODEL_STRONG", "qwen3.7-plus")
+MODEL_CHEAP = os.environ.get("MODEL_CHEAP", "qwen3.7-plus")
 
 # MCP
 UAV_MCP_API_KEY = os.environ.get("UAV_MCP_API_KEY", "")
