@@ -17,6 +17,7 @@ from pathlib import Path
 sys.path.insert(0, "src")
 
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.store.memory import InMemoryStore
 from langgraph.types import Command
 
 from self_agent.agent import build_agent
@@ -83,7 +84,8 @@ async def main():
     baseline = {r["id"]: r for r in json.load(BASELINE.open())}
     tools, down = await load_mcp_tools()
     print(f"MCP 工具 {len(tools)} 个；不可用域: {down or '无'}")
-    agent = build_agent(tools, down_domains=down, checkpointer=InMemorySaver())
+    agent = build_agent(tools, down_domains=down, checkpointer=InMemorySaver(),
+                        store=InMemoryStore())  # /memories 路由需要 store（#8 教训）
 
     results = []
     for i in ids:

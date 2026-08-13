@@ -23,8 +23,10 @@ from .sandbox import WorkspaceShellBackend
 
 logger = logging.getLogger(__name__)
 
-# 🔒 高危·人在环工具（与 mcp-services 的 confirm_token 工具一致；
-# interrupt 是体验层，confirm_token 是服务端最后防线，双层语义见方案 4.5）
+# 🔒 高危·人在环工具（与 mcp-services 的 confirm_token 工具对齐；
+# interrupt 是体验层，confirm_token 是服务端最后防线，双层语义见方案 4.5）。
+# 注意：emergency_stop / return_home 是紧急白名单动作（docs/05）——紧急时刻
+# 必须直通，任何一层都不拦（回归 #69/#70 教训：拦了模型都会变得畏缩）。
 LOCKED_TOOLS = [
     "dispatch_drone",
     "create_task_plan",
@@ -38,15 +40,10 @@ LOCKED_TOOLS = [
     "reschedule_task",
     "retry_failed_task",
     "resume_from_breakpoint",
-    "handle_alert",
     "takeoff_to_point",
     "set_height_limit",
-    "emergency_stop",
-    "return_home",
     "debug_mode",
     "charge_control",
-    "air_conditioner",
-    "dock_cover",
 ]
 
 LEAD_PROMPT = """\
@@ -57,7 +54,11 @@ LEAD_PROMPT = """\
 - 独立子任务用 task 工具并行派给子代理（飞控执行找 uav-ops、告警监控找
   monitor、数据分析找 data-analyst），自己只做规划与汇总；简单查询可直接调工具；
 - 工具返回错误时如实报告，不得编造数据；
-- 高危操作（派机、起飞、建删围栏等）会要求人工确认，等待确认结果，不要重复发起；
+- **紧急指令（急停、返航）立即调用对应工具执行，不要先查询状态、不要犹豫**；
+- 用户明确点名的操作（如调画质、开舱盖、排期），直接调用最贴合的专用工具完成，
+  不要用查询类工具替代或半途停下；
+- 高危操作（派机、起飞、建删围栏等）系统会自动弹出人工确认，弹出后等待结果、
+  不要重复发起；没弹确认的操作正常执行即可；
 - 工具返回"已登记待确认单"即视为该步已受理：**不要**再次调用同一工具，
   如实告知用户等待审批并继续其余任务；只有收到 [SYSTEM_CONFIRMATION] 带
   confirm_token 的指令时，才携带该 token 重新执行对应操作。
