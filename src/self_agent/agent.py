@@ -71,10 +71,15 @@ SKILLS_SRC = settings.PROJECT_ROOT / "skills"
 
 
 def _sync_workspace() -> None:
-    """P0 沙箱工作区：受限根目录 + 技能目录同步（repo 为源，工作区为运行时）。"""
+    """P0 沙箱工作区：受限根目录 + 技能装配（repo 内置技能 + 受管技能库）。"""
     settings.WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
     if SKILLS_SRC.exists():
         shutil.copytree(SKILLS_SRC, settings.WORKSPACE_ROOT / "skills", dirs_exist_ok=True)
+    from .skill_manager import materialize  # 延迟导入避免无 DB 环境的启动开销
+
+    managed = materialize(settings.WORKSPACE_ROOT)
+    if managed:
+        logger.info("受管技能已装配: %s", managed)
 
 
 def build_backend():
@@ -140,8 +145,13 @@ def build_agent(
         prompt += f"\n注意：以下工具域当前不可用，不要尝试调用：{', '.join(down_domains)}。\n"
     tool_names = {getattr(t, "name", "") for t in tools}
     interrupts = {name: True for name in LOCKED_TOOLS if name in tool_names}
-    if skills is None and SKILLS_SRC.exists():
-        skills = ["/skills/doc-skills/"]  # backend 虚拟路径（_sync_workspace 已同步）
+    if skills is None:
+        skills = []
+        if SKILLS_SRC.exists():
+            skills.append("/skills/doc-skills/")  # 内置技能（backend 虚拟路径）
+        if (settings.WORKSPACE_ROOT / "skills" / "managed").exists():
+            skills.append("/skills/managed/")  # 受管技能（导入+审核通过的）
+        skills = skills or None
     return create_deep_agent(
         model=build_model("strong"),
         tools=tools,
