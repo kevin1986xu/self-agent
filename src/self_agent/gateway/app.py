@@ -29,6 +29,8 @@ logger = logging.getLogger(__name__)
 
 AEGRA_BASE = os.environ.get("AEGRA_BASE", "http://127.0.0.1:2027").rstrip("/")
 ASSISTANT_ID = os.environ.get("ASSISTANT_ID", "agent")
+APPROVAL_BASE = os.environ.get("APPROVAL_BASE", "http://127.0.0.1:8205").rstrip("/")
+APPROVAL_ADMIN_KEY = os.environ.get("APPROVAL_ADMIN_KEY", "")
 
 app = FastAPI(title="self-agent gateway")
 app.add_middleware(
@@ -58,31 +60,92 @@ async def _get_thread(client: httpx.AsyncClient, channel: str, conv: str) -> str
     return tid
 
 
-async def _stream_run(client: httpx.AsyncClient, thread_id: str, body: dict) -> dict:
-    """跑一轮 run，返回 {'answer': str|None, 'interrupt': dict|None}。"""
-    last = None
-    async with client.stream(
-        "POST", f"{AEGRA_BASE}/threads/{thread_id}/runs/stream",
-        json={"assistant_id": ASSISTANT_ID, "stream_mode": ["values"], **body},
-        timeout=600,
-    ) as resp:
-        async for line in resp.aiter_lines():
-            if line.startswith("data:"):
-                try:
-                    d = json.loads(line[5:])
-                except ValueError:
-                    continue
-                if isinstance(d, dict) and d.get("messages"):
-                    last = d
-    # interrupt 探测：读线程状态
-    st = (await client.get(f"{AEGRA_BASE}/threads/{thread_id}/state")).json()
-    for task in st.get("tasks") or []:
-        for intr in task.get("interrupts") or []:
-            return {"answer": None, "interrupt": intr.get("value")}
-    answer = None
-    if last:
-        answer = str(last["messages"][-1].get("content") or "")
+async def _stream_run(client: httpx.AsyncClient, thread_id: str, body: dict,
+                      *, auto_approve: bool = False) -> dict:
+    """跑一轮 run，返回 {'answer': str|None, 'interrupt': dict|None}。
+
+    auto_approve：[SYSTEM_CONFIRMATION] 续跑场景——带 token 的重调会再次
+    触发框架层 interrupt，同意链来自同一次用户确认，自动放行（最多 2 次）。
+    """
+    async def _once(payload: dict):
+        last = None
+        async with client.stream(
+            "POST", f"{AEGRA_BASE}/threads/{thread_id}/runs/stream",
+            json={"assistant_id": ASSISTANT_ID, "stream_mode": ["values"], **payload},
+            timeout=600,
+        ) as resp:
+            async for line in resp.aiter_lines():
+                if line.startswith("data:"):
+                    try:
+                        d = json.loads(line[5:])
+                    except ValueError:
+                        continue
+                    if isinstance(d, dict) and d.get("messages"):
+                        last = d
+        st = (await client.get(f"{AEGRA_BASE}/threads/{thread_id}/state")).json()
+        for task in st.get("tasks") or []:
+            for intr in task.get("interrupts") or []:
+                return last, intr.get("value")
+        return last, None
+
+    last, interrupt = await _once(body)
+    hops = 0
+    while interrupt and auto_approve and hops < 2:
+        hops += 1
+        last, interrupt = await _once(
+            {"command": {"resume": {"decisions": [{"type": "approve"}]}}})
+    if interrupt:
+        return {"answer": None, "interrupt": interrupt}
+    answer = str(last["messages"][-1].get("content") or "") if last else None
     return {"answer": answer, "interrupt": None}
+
+
+async def _bridge_server_approval(client: httpx.AsyncClient, thread_id: str,
+                                  user_id: int, pending_interrupt: dict | None) -> dict | None:
+    """双层人在环桥接（方案 4.5）：框架层批准后，工具无 token 执行只会在
+    审批服务登记待确认单——本函数代表已同意的用户完成第二层：
+
+    ① 查最新待确认单并管理端批准换 confirm_token（审批人=X-User-Id，留痕）；
+    ② 若本轮 run 停在同一工具的新 interrupt 上（模型重试），用 **edit 决策**
+       把 confirm_token 注入工具参数直接放行执行；
+    ③ 若 run 已干净结束，注入 [SYSTEM_CONFIRMATION] 指令续跑（带 token 重调
+       再触发的 interrupt 自动放行）。同意链均来自同一次用户确认。
+    """
+    if not APPROVAL_ADMIN_KEY:
+        return None
+    admin = {"X-Admin-Key": APPROVAL_ADMIN_KEY}
+    try:
+        r = await client.get(f"{APPROVAL_BASE}/api/approval/pending",
+                             params={"status": "pending"}, headers=admin, timeout=10)
+        orders = r.json() if r.status_code == 200 else []
+    except httpx.HTTPError:
+        return None
+    if not orders:
+        return None
+    order = orders[-1]  # 最新登记（本轮 run 刚产生的）
+    a = await client.post(
+        f"{APPROVAL_BASE}/api/approval/{order['action_id']}/approve",
+        headers={**admin, "X-User-Id": f"gateway-user-{user_id}"}, timeout=10)
+    if a.status_code != 200:
+        logger.warning("审批服务批准失败 %s: %s", a.status_code, a.text[:200])
+        return None
+    tok = a.json()
+
+    if pending_interrupt:
+        reqs = pending_interrupt.get("action_requests") or []
+        if reqs and reqs[0].get("name") == tok["action"]:
+            edited = {"name": reqs[0]["name"],
+                      "args": {**(reqs[0].get("args") or {}), "confirm_token": tok["confirm_token"]}}
+            return await _stream_run(
+                client, thread_id,
+                {"command": {"resume": {"decisions": [{"type": "edit", "edited_action": edited}]}}},
+                auto_approve=True)
+    msg = (f"[SYSTEM_CONFIRMATION] 动作 {tok['action']}（单号 {tok['action_id']}）已获人工批准，"
+           f"confirm_token={tok['confirm_token']}。请携带该 confirm_token 参数重新执行原操作，"
+           f"完成后继续既定任务。")
+    return await _stream_run(client, thread_id,
+                             {"input": {"messages": [{"type": "human", "content": msg}]}},
+                             auto_approve=True)
 
 
 def _format_card(approval_id: int, interrupt_value: dict) -> str:
@@ -118,6 +181,11 @@ async def _handle_message(channel_name: str, msg: dict) -> None:
                         else {"type": "reject", "message": f"用户#{user_id} 拒绝"})
             result = await _stream_run(client, rec["thread_id"],
                                        {"command": {"resume": {"decisions": [decision]}}})
+            if approve:
+                bridged = await _bridge_server_approval(client, rec["thread_id"], user_id,
+                                                        result["interrupt"])
+                if bridged:
+                    result = bridged
         else:
             result = await _stream_run(
                 client, thread_id,
@@ -159,6 +227,11 @@ async def decide(approval_id: int, payload: dict):
     async with httpx.AsyncClient() as client:
         result = await _stream_run(client, rec["thread_id"],
                                    {"command": {"resume": {"decisions": [decision]}}})
+        if payload.get("approve"):
+            bridged = await _bridge_server_approval(client, rec["thread_id"], user_id,
+                                                    result["interrupt"])
+            if bridged:
+                result = bridged
     return {"ok": True, "answer": result["answer"], "interrupt": bool(result["interrupt"])}
 
 
