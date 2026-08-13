@@ -5,3 +5,7 @@ __pycache__/
 .env
 node_modules/
 .claude/
+.workspace/
+config/mcp_config.json
+uv.lock.bak
+.pytest_cache/

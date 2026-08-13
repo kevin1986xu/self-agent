@@ -1,0 +1,10 @@
+{
+  "uav-drone-dispatch": {
+    "transport": "streamable_http",
+    "url": "http://127.0.0.1:8201/mcp"
+  },
+  "uav-preflight": {
+    "transport": "streamable_http",
+    "url": "http://127.0.0.1:8203/mcp"
+  }
+}
