@@ -37,6 +37,7 @@ pre { background:#f8fafc; padding:10px; border-radius:6px; font-size:12px; overf
   <button data-tab="skills" class="active">技能管理</button>
   <button data-tab="knowledge">知识库</button>
   <button data-tab="approvals">审批</button>
+  <button data-tab="playbooks">模板任务</button>
   <button data-tab="files">工作区文件</button>
 </nav>
 <main id="main"></main>
@@ -92,6 +93,25 @@ async approvals() {
            <button class="op" onclick="decide(${a.id},false)">❌ 拒绝</button>`:""}</td></tr>`).join("")}
     </table>${approvals.length?"":'<p class="muted" style="padding:12px">暂无审批记录。</p>'}</div>`;
 },
+async playbooks() {
+  const {playbooks} = await api("/playbooks");
+  return `<div class="card">
+    <div class="row" style="margin-bottom:8px">
+      <input type="text" id="pbName" placeholder="模板名（如 周报巡检）" style="width:160px">
+      <input type="text" id="pbCron" placeholder="cron（可空=手动，如 0 9 * * 1）" style="width:200px">
+      <input type="text" id="pbConv" placeholder="投递会话（默认 playbook）" style="width:170px"></div>
+    <div class="row">
+      <input type="text" id="pbTpl" placeholder="提示词模板，支持 {参数} 槽位，如：给{region}出一份巡检周报PPT" style="width:560px">
+      <button class="primary" onclick="savePb()">保存模板</button></div></div>
+    <div class="card"><table><tr><th>模板</th><th>提示词</th><th>cron</th><th>投递</th><th>上次运行</th><th>操作</th></tr>
+    ${playbooks.map(p=>`<tr><td><b>${esc(p.name)}</b></td>
+      <td class="muted" style="max-width:320px">${esc(p.prompt_template).slice(0,60)}</td>
+      <td>${esc(p.cron||"手动")}</td><td class="muted">${esc(p.channel)}:${esc(p.conversation_key)}</td>
+      <td class="muted">${p.last_run_at?esc(p.last_run_at).slice(0,19):"—"}</td>
+      <td><button class="op" onclick="runPb(${p.id})">▶ 发起</button>
+          <button class="op" onclick="delPb(${p.id})">删除</button></td></tr>`).join("")}
+    </table>${playbooks.length?"":'<p class="muted" style="padding:12px">暂无模板。</p>'}</div>`;
+},
 async files() {
   const {files} = await api("/files");
   return `<div class="card"><table><tr><th>路径</th><th>大小</th><th>修改时间</th><th></th></tr>
@@ -139,6 +159,17 @@ async function kbSearch() {
   el.innerHTML = hits.length ? hits.map(h=>`<p><b>[${h.score}] ${esc(h.file)}#${h.seq}</b><br>
     <span class="muted">${esc(h.content).slice(0,180)}…</span></p>`).join("") : "无命中";
 }
+async function savePb() {
+  try { await api("/playbooks", {method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({name:$("#pbName").value, prompt_template:$("#pbTpl").value,
+      cron:$("#pbCron").value||null, conversation_key:$("#pbConv").value||"playbook"})});
+    toast("模板已保存"); render(); } catch(e){ toast(e.message); }
+}
+async function runPb(id) {
+  try { const r = await api(`/playbooks/${id}/run`, {method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
+    toast("已发起：" + r.rendered.slice(0,40)); } catch(e){ toast(e.message); }
+}
+async function delPb(id) { await api(`/playbooks/${id}`, {method:"DELETE"}); toast("已删除"); render(); }
 async function decide(id, approve) {
   try { await api(`/approvals/${id}/decision`, {method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({approve, channel:"admin", channel_user_id:"admin"})});

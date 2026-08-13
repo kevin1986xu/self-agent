@@ -25,6 +25,7 @@ from .. import settings
 from . import identity
 from .channels import CHANNELS, LocalChannel
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger(__name__)
 
 AEGRA_BASE = os.environ.get("AEGRA_BASE", "http://127.0.0.1:2027").rstrip("/")
@@ -161,11 +162,13 @@ def _format_card(approval_id: int, interrupt_value: dict) -> str:
 
 async def _handle_message(channel_name: str, msg: dict) -> None:
     ch = CHANNELS[channel_name]
+    logger.info("handle[%s:%s] 身份登记", channel_name, msg["conversation_key"])
     user_id = identity.get_or_create_user(channel_name, msg["channel_user_id"], msg.get("display_name"))
     conv = msg["conversation_key"]
     text = msg["text"]
     async with httpx.AsyncClient() as client:
         thread_id = await _get_thread(client, channel_name, conv)
+        logger.info("handle[%s:%s] thread=%s 开跑", channel_name, conv, thread_id)
 
         # 快捷审批口令：同意/拒绝 <单号>
         import re
@@ -402,3 +405,82 @@ async def api_approvals(status: str = "pending"):
 async def admin_page():
     page = Path(__file__).parent / "admin.html"
     return page.read_text()
+
+
+# ============ Playbook 模板 + 定时任务（M3-3/4） ============
+
+@app.get("/playbooks")
+async def api_playbooks():
+    from . import playbook
+
+    return {"playbooks": playbook.list_playbooks()}
+
+
+@app.post("/playbooks")
+async def api_playbook_upsert(spec: dict):
+    from . import playbook
+
+    if not spec.get("name") or not spec.get("prompt_template"):
+        raise HTTPException(400, "需要 name 和 prompt_template")
+    if spec.get("cron"):
+        from croniter import croniter
+
+        if not croniter.is_valid(spec["cron"]):
+            raise HTTPException(400, f"cron 表达式非法: {spec['cron']}")
+    return playbook.upsert(spec)
+
+
+@app.delete("/playbooks/{pb_id}")
+async def api_playbook_delete(pb_id: int):
+    from . import playbook
+
+    playbook.delete(pb_id)
+    return {"ok": True}
+
+
+async def _launch_playbook(pb: dict, params: dict | None, trigger: str) -> None:
+    from . import playbook
+
+    text = playbook.render(pb, params)
+    playbook.mark_run(pb["id"])
+    msg = {"channel_user_id": f"playbook:{pb['name']}", "display_name": f"模板[{pb['name']}]",
+           "conversation_key": pb["conversation_key"], "text": text}
+    logger.info("playbook %s 发起（%s）→ %s:%s", pb["name"], trigger,
+                pb["channel"], pb["conversation_key"])
+    try:
+        await _handle_message(pb["channel"], msg)
+        logger.info("playbook %s 完成", pb["name"])
+    except Exception:  # noqa: BLE001 —— 模板任务失败必须留痕并回推
+        logger.exception("playbook %s 执行失败", pb["name"])
+        try:
+            await CHANNELS[pb["channel"]].send(
+                pb["conversation_key"], f"⚠️ 模板任务「{pb['name']}」执行失败，详见网关日志。")
+        except Exception:  # noqa: BLE001
+            pass
+
+
+@app.post("/playbooks/{pb_id}/run")
+async def api_playbook_run(pb_id: int, payload: dict, background: BackgroundTasks):
+    from . import playbook
+
+    pb = next((p for p in playbook.list_playbooks() if p["id"] == pb_id), None)
+    if not pb:
+        raise HTTPException(404, "模板不存在")
+    background.add_task(_launch_playbook, pb, payload.get("params"), "manual")
+    return {"ok": True, "rendered": playbook.render(pb, payload.get("params"))}
+
+
+@app.on_event("startup")
+async def _cron_loop():
+    async def loop():
+        from . import playbook
+
+        while True:
+            try:
+                for pb in playbook.due_playbooks():
+                    await _launch_playbook(pb, None, "cron")
+            except Exception:  # noqa: BLE001 —— 调度失败下一轮重试
+                logger.exception("cron 轮询失败")
+            await asyncio.sleep(30)
+
+    asyncio.create_task(loop())

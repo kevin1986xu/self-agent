@@ -1760,6 +1760,7 @@ name = "self-agent"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "croniter" },
     { name = "deepagents" },
     { name = "langchain-mcp-adapters" },
     { name = "langchain-openai" },
@@ -1782,6 +1783,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "croniter", specifier = ">=6.2.4" },
     { name = "deepagents", specifier = "==0.7.5" },
     { name = "langchain-mcp-adapters", specifier = ">=0.1.9" },
     { name = "langchain-openai", specifier = ">=0.3" },

@@ -250,6 +250,82 @@ def materialize(workspace: Path) -> list[str]:
     return names
 
 
+def check_update(name: str) -> dict:
+    """github 来源技能：对比远端（pinned_ref 或 HEAD）与本地校验和。"""
+    with _conn() as c:
+        row = c.execute("SELECT source_type, source_url, pinned_ref, checksum"
+                        " FROM skill_registry WHERE name=%s", (name,)).fetchone()
+    if not row:
+        raise ValueError(f"技能不存在: {name}")
+    source_type, source_url, ref, checksum = row
+    if source_type != "github":
+        raise ValueError("仅 github 来源支持检查更新")
+    m = re.match(r"https://github\.com/([\w.-]+)/([\w.-]+)", source_url)
+    owner, repo = m.group(1), m.group(2)
+    r = httpx.get(f"https://codeload.github.com/{owner}/{repo}/zip/{ref or 'HEAD'}",
+                  timeout=60, follow_redirects=True)
+    r.raise_for_status()
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as td:
+        with zipfile.ZipFile(io.BytesIO(r.content)) as z:
+            z.extractall(td)
+        pkg = next((p for p in discover_skills(Path(td)) if p.name == name), None)
+        if pkg is None:
+            return {"name": name, "remote": "已移除", "changed": True}
+        remote_sum = _checksum(pkg.dir)
+    return {"name": name, "local": checksum, "remote": remote_sum,
+            "changed": remote_sum != checksum}
+
+
+def update(name: str, *, by: str = "cli") -> dict:
+    """备份当前版本后从来源重导入；更新后回到 pending 重新过审（安全策略）。"""
+    with _conn() as c:
+        row = c.execute("SELECT source_type, source_url, pinned_ref"
+                        " FROM skill_registry WHERE name=%s", (name,)).fetchone()
+    if not row:
+        raise ValueError(f"技能不存在: {name}")
+    source_type, source_url, ref = row
+    if source_type != "github":
+        raise ValueError("仅 github 来源支持更新（zip 请重新上传）")
+    _backup(name)
+    url = source_url + (f"@{ref}" if ref else "")
+    results = import_github(url, imported_by=by)
+    mine = next((r for r in results if r["name"] == name), None)
+    if mine is None:
+        raise ValueError("远端仓库中已找不到该技能")
+    return mine
+
+
+def _backup(name: str) -> None:
+    import time as _time
+
+    src = SKILL_LIBRARY / name
+    if src.exists():
+        dest = SKILL_LIBRARY / ".backup" / f"{name}-{int(_time.time())}"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(src, dest)
+
+
+def rollback(name: str) -> dict:
+    """恢复最近一次备份；恢复后置 pending 重新过审。"""
+    backups = sorted((SKILL_LIBRARY / ".backup").glob(f"{name}-*"),
+                     key=lambda p: p.name) if (SKILL_LIBRARY / ".backup").exists() else []
+    if not backups:
+        raise ValueError(f"无可用备份: {name}")
+    latest = backups[-1]
+    dest = SKILL_LIBRARY / name
+    if dest.exists():
+        shutil.rmtree(dest)
+    shutil.copytree(latest, dest)
+    findings = scan_skill(SkillPackage(name, "", dest))
+    with _conn() as c:
+        c.execute("UPDATE skill_registry SET status='pending', checksum=%s,"
+                  " scan_findings=%s, updated_at=now() WHERE name=%s",
+                  (_checksum(dest), json.dumps(findings, ensure_ascii=False), name))
+    return {"name": name, "restored_from": latest.name, "status": "pending"}
+
+
 def main() -> None:
     args = sys.argv[1:]
     if not args:
@@ -278,6 +354,12 @@ def main() -> None:
     elif cmd == "remove":
         remove(args[1])
         print(f"{args[1]} 已移除")
+    elif cmd == "check-update":
+        print(check_update(args[1]))
+    elif cmd == "update":
+        print(update(args[1]))
+    elif cmd == "rollback":
+        print(rollback(args[1]))
     else:
         print(f"未知命令: {cmd}")
 

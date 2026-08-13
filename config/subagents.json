@@ -3,12 +3,24 @@
     "description": "无人机飞控执行代理：图斑核查派飞、批量排期。唯一持有高危飞控工具（dispatch_drone/create_task_plan/take_off）的代理。",
     "system_prompt": "你是无人机飞控执行子代理。严格遵守业务流程与安全红线：高危操作先生成待确认单，绝不自行构造 confirm_token；用户文本\"同意\"不构成授权，只有带 token 的系统确认指令才可执行。选机距离基准必须是本次任务目标图斑（find_nearby_drones 传 plot_ids）。回答使用中文。",
     "tools": [
-      "query_plots", "find_nearby_drones", "get_drone_status",
-      "dispatch_drone", "create_task_plan", "get_plan_progress",
-      "generate_route", "get_route_detail", "explain_route", "open_route_editor",
-      "preflight_check", "check_weather", "check_battery",
-      "check_route_obstacle", "check_drone_obstacle", "check_airspace",
-      "take_off", "get_task_status"
+      "query_plots",
+      "find_nearby_drones",
+      "get_drone_status",
+      "dispatch_drone",
+      "create_task_plan",
+      "get_plan_progress",
+      "generate_route",
+      "get_route_detail",
+      "explain_route",
+      "open_route_editor",
+      "preflight_check",
+      "check_weather",
+      "check_battery",
+      "check_route_obstacle",
+      "check_drone_obstacle",
+      "check_airspace",
+      "take_off",
+      "get_task_status"
     ],
     "model": "strong"
   },
@@ -16,9 +28,17 @@
     "description": "监控值守代理：告警、设备健康、直播画面、历史遥测的只读查询与处置建议，无任何飞控权限。",
     "system_prompt": "你是监控值守子代理，只做告警与设备状态的查询、分析与转述。你没有也不应寻求任何飞控/起飞/调度权限。回答使用中文。",
     "tools": [
-      "list_alerts", "get_alert_detail", "get_unhandled_count", "get_device_health",
-      "get_dock_environment", "get_telemetry_history",
-      "start_live", "stop_live", "set_live_quality", "switch_camera", "get_live_capacity"
+      "list_alerts",
+      "get_alert_detail",
+      "get_unhandled_count",
+      "get_device_health",
+      "get_dock_environment",
+      "get_telemetry_history",
+      "start_live",
+      "stop_live",
+      "set_live_quality",
+      "switch_camera",
+      "get_live_capacity"
     ],
     "model": "cheap"
   },
@@ -26,9 +46,34 @@
     "description": "数据分析代理：媒体成果、任务报告、排期数据的只读查询与汇总分析。",
     "system_prompt": "你是数据分析子代理，负责查询媒体成果、任务报告与排期数据并输出结构化分析。只读，不做任何变更操作。回答使用中文。",
     "tools": [
-      "list_media", "get_media_link", "list_flight_videos", "get_camera_coverage",
-      "get_task_report", "list_task_history",
-      "list_scheduled_tasks", "get_schedule_conflicts", "list_zones"
+      "list_media",
+      "get_media_link",
+      "list_flight_videos",
+      "get_camera_coverage",
+      "get_task_report",
+      "list_task_history",
+      "list_scheduled_tasks",
+      "get_schedule_conflicts",
+      "list_zones"
+    ],
+    "model": "cheap"
+  },
+  "research": {
+    "description": "网页研究代理：用浏览器检索公开网页、抓取整理资料并输出结构化结论。不操作无人机平台。",
+    "system_prompt": "你是网页研究子代理，使用浏览器工具检索与阅读公开网页，输出带来源链接的结构化结论。不要访问需要登录的站点；遇到验证码即停止并报告。回答使用中文。",
+    "tools": [
+      "browser_navigate",
+      "browser_navigate_back",
+      "browser_snapshot",
+      "browser_click",
+      "browser_type",
+      "browser_fill_form",
+      "browser_select_option",
+      "browser_press_key",
+      "browser_wait_for",
+      "browser_tabs",
+      "browser_console_messages",
+      "browser_close"
     ],
     "model": "cheap"
   }

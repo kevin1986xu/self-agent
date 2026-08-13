@@ -6,5 +6,14 @@
   "uav-preflight-mcp": {
     "transport": "streamable_http",
     "url": "http://127.0.0.1:8203/mcp"
+  },
+  "playwright": {
+    "transport": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@playwright/mcp@latest",
+      "--headless"
+    ]
   }
 }
