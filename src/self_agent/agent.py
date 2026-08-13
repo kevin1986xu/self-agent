@@ -8,15 +8,18 @@
 
 import json
 import logging
+import os
+import shutil
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from deepagents import create_deep_agent
-from deepagents.backends import CompositeBackend, StateBackend, StoreBackend
+from deepagents.backends import CompositeBackend, StoreBackend
 
 from . import settings
 from .audit import AuditMiddleware
 from .model import build_model
+from .sandbox import WorkspaceShellBackend
 
 logger = logging.getLogger(__name__)
 
@@ -64,11 +67,35 @@ LEAD_PROMPT = """\
 """
 
 
+SKILLS_SRC = settings.PROJECT_ROOT / "skills"
+
+
+def _sync_workspace() -> None:
+    """P0 沙箱工作区：受限根目录 + 技能目录同步（repo 为源，工作区为运行时）。"""
+    settings.WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
+    if SKILLS_SRC.exists():
+        shutil.copytree(SKILLS_SRC, settings.WORKSPACE_ROOT / "skills", dirs_exist_ok=True)
+
+
 def build_backend():
-    """文件系统路由（技术方案 4.4）：/memories 跨会话持久（宿主 store），
-    其余路径为会话内状态。namespace 暂为全局，R19 身份上线后按用户隔离。"""
+    """文件系统路由（技术方案 4.4，M2-1 P0 沙箱）。
+
+    - 默认：LocalShellBackend 受限在 WORKSPACE_ROOT（虚拟路径模式），自带
+      execute 工具跑技能脚本；PATH 注入本项目 venv（python-pptx 等文档库在内），
+      不继承宿主环境（密钥不外泄给脚本）；
+    - /memories：跨会话持久（宿主 store）。
+    - 已知限制（P0 接受）：工作区暂为全会话共享；P1 Docker 沙箱按会话隔离。
+    """
+    _sync_workspace()
+    venv_bin = settings.PROJECT_ROOT / ".venv" / "bin"
     return CompositeBackend(
-        default=StateBackend(),
+        default=WorkspaceShellBackend(
+            root_dir=settings.WORKSPACE_ROOT,
+            virtual_mode=True,
+            timeout=180,
+            env={"PATH": f"{venv_bin}:/usr/bin:/bin", "LANG": os.environ.get("LANG", "en_US.UTF-8")},
+            inherit_env=False,
+        ),
         routes={"/memories": StoreBackend(namespace=lambda rt: ("memories",))},
     )
 
@@ -113,6 +140,8 @@ def build_agent(
         prompt += f"\n注意：以下工具域当前不可用，不要尝试调用：{', '.join(down_domains)}。\n"
     tool_names = {getattr(t, "name", "") for t in tools}
     interrupts = {name: True for name in LOCKED_TOOLS if name in tool_names}
+    if skills is None and SKILLS_SRC.exists():
+        skills = ["/skills/doc-skills/"]  # backend 虚拟路径（_sync_workspace 已同步）
     return create_deep_agent(
         model=build_model("strong"),
         tools=tools,
