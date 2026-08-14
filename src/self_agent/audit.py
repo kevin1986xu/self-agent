@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS self_agent_audit (
     id BIGSERIAL PRIMARY KEY,
     ts TIMESTAMPTZ NOT NULL DEFAULT now(),
     tool TEXT NOT NULL,
+    user_key TEXT,
     args_digest TEXT,
     status TEXT NOT NULL,
     elapsed_ms INTEGER,
@@ -72,6 +73,8 @@ class AuditMiddleware(AgentMiddleware):
                 await self._pool.open()
                 async with self._pool.connection() as conn:
                     await conn.execute(_DDL)
+                    await conn.execute(
+                        "ALTER TABLE self_agent_audit ADD COLUMN IF NOT EXISTS user_key TEXT")
             except Exception as exc:  # noqa: BLE001
                 logger.warning("审计库不可用，降级 JSONL：%s", exc)
                 self._db_ok = False
@@ -84,9 +87,9 @@ class AuditMiddleware(AgentMiddleware):
             try:
                 async with pool.connection() as conn:
                     await conn.execute(
-                        "INSERT INTO self_agent_audit (tool, args_digest, status, elapsed_ms, error)"
-                        " VALUES (%s, %s, %s, %s, %s)",
-                        (row["tool"], row["args_digest"], row["status"],
+                        "INSERT INTO self_agent_audit (tool, user_key, args_digest, status, elapsed_ms, error)"
+                        " VALUES (%s, %s, %s, %s, %s, %s)",
+                        (row["tool"], row.get("user_key"), row["args_digest"], row["status"],
                          row["elapsed_ms"], row.get("error")),
                     )
                 return
@@ -97,8 +100,15 @@ class AuditMiddleware(AgentMiddleware):
 
     def _row(self, request, status: str, t0: float, error: str | None = None) -> dict:
         tc = request.tool_call or {}
+        from .agent import _user_key
+
+        try:
+            user = _user_key(getattr(request, "runtime", None))
+        except Exception:  # noqa: BLE001
+            user = None
         return {
             "tool": tc.get("name", "?"),
+            "user_key": user,
             "args_digest": _digest(tc.get("args")),
             "status": status,
             "elapsed_ms": int((time.monotonic() - t0) * 1000),

@@ -2,5 +2,8 @@
   "graphs": {
     "uav": "./graph_entry.py:make_graph_uav",
     "default": "./graph_entry.py:make_graph_default"
+  },
+  "auth": {
+    "path": "./auth.py:auth"
   }
 }

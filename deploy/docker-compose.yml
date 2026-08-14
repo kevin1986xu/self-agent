@@ -39,6 +39,7 @@ services:
       LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-}
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      AUTH_TOKENS: ${AUTH_TOKENS:-}
     volumes:
       - workspace:/data/workspace
       - ../config:/app/config:ro
@@ -56,6 +57,9 @@ services:
       APPROVAL_BASE: ${APPROVAL_BASE:-}
       APPROVAL_ADMIN_KEY: ${APPROVAL_ADMIN_KEY:-}
       GATEWAY_CORS: ${GATEWAY_CORS:-http://localhost:3000}
+      AEGRA_TOKEN: ${AEGRA_TOKEN:-}
+      GATEWAY_ADMIN_TOKEN: ${GATEWAY_ADMIN_TOKEN:-}
+      DEFAULT_PROJECT: ${DEFAULT_PROJECT:-default}
       DINGTALK_APP_SECRET: ${DINGTALK_APP_SECRET:-}
     volumes:
       - workspace:/data/workspace

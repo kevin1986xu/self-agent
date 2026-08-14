@@ -13,9 +13,11 @@ CREATE TABLE IF NOT EXISTS user_identity (
     channel TEXT NOT NULL,
     channel_user_id TEXT NOT NULL,
     display_name TEXT,
+    role TEXT NOT NULL DEFAULT 'member',      -- member / admin
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE (channel, channel_user_id)
 );
+ALTER TABLE user_identity ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'member';
 CREATE TABLE IF NOT EXISTS gateway_approval (
     id BIGSERIAL PRIMARY KEY,
     thread_id TEXT NOT NULL,
@@ -86,6 +88,29 @@ def list_messages(project: str | None = None, channel: str | None = None,
             (project, project, channel, channel, conversation_key, conversation_key,
              min(limit, 500))).fetchall()
     keys = ["ts", "project", "channel", "conversation_key", "direction", "user_id", "content"]
+    return [dict(zip(keys, r)) for r in rows]
+
+
+def get_role(user_id: int) -> str:
+    with _conn() as c:
+        row = c.execute("SELECT role FROM user_identity WHERE user_id=%s", (user_id,)).fetchone()
+    return row[0] if row else "member"
+
+
+def set_role(user_id: int, role: str) -> None:
+    assert role in ("member", "admin")
+    with _conn() as c:
+        n = c.execute("UPDATE user_identity SET role=%s WHERE user_id=%s", (role, user_id)).rowcount
+    if not n:
+        raise ValueError(f"用户不存在: {user_id}")
+
+
+def list_users() -> list[dict]:
+    with _conn() as c:
+        rows = c.execute(
+            "SELECT user_id, channel, channel_user_id, display_name, role, created_at::date"
+            " FROM user_identity ORDER BY user_id").fetchall()
+    keys = ["user_id", "channel", "channel_user_id", "display_name", "role", "since"]
     return [dict(zip(keys, r)) for r in rows]
 
 

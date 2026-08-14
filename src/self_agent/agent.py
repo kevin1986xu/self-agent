@@ -52,15 +52,30 @@ def _sync_workspace(project: Project) -> None:
         logger.info("[%s] 受管技能已装配: %s", project.name, managed)
 
 
+def _user_key(rt) -> str:
+    """从执行期 Runtime 提取用户标识：网关经 run context 传 user_id；
+    Web 端 Aegra 鉴权用户在 context 的 langgraph_auth_user；都没有则 shared。"""
+    ctx = getattr(rt, "context", None) or {}
+    if isinstance(ctx, dict):
+        if ctx.get("user_id"):
+            return f"u{ctx['user_id']}"
+        auth_user = ctx.get("langgraph_auth_user")
+        ident = getattr(auth_user, "identity", None) or (
+            auth_user.get("identity") if isinstance(auth_user, dict) else None)
+        if ident:
+            return f"id:{ident}"
+    return "shared"
+
+
 def build_backend(project: Project):
-    """文件系统路由：项目独立工作区；/memories 跨会话持久（按项目隔离命名空间）。"""
+    """文件系统路由：项目独立工作区；/memories 按 (项目, 用户) 双层隔离。"""
     _sync_workspace(project)
     from .docker_sandbox import build_shell_backend
 
-    ns = ("memories", project.name)
     return CompositeBackend(
         default=build_shell_backend(root_dir=project.workspace),
-        routes={"/memories": StoreBackend(namespace=lambda rt: ns)},
+        routes={"/memories": StoreBackend(
+            namespace=lambda rt: ("memories", project.name, _user_key(rt)))},
     )
 
 

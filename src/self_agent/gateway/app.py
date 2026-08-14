@@ -29,11 +29,30 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 logger = logging.getLogger(__name__)
 
 AEGRA_BASE = os.environ.get("AEGRA_BASE", "http://127.0.0.1:2027").rstrip("/")
+AEGRA_TOKEN = os.environ.get("AEGRA_TOKEN", "")  # Aegra 开鉴权后网关的服务令牌
+
+
+def _aegra_client() -> httpx.AsyncClient:
+    headers = {"Authorization": f"Bearer {AEGRA_TOKEN}"} if AEGRA_TOKEN else {}
+    return httpx.AsyncClient(headers=headers)
 DEFAULT_PROJECT = os.environ.get("DEFAULT_PROJECT", "default")  # assistant_id = 项目名
 APPROVAL_BASE = os.environ.get("APPROVAL_BASE", "http://127.0.0.1:8205").rstrip("/")
 APPROVAL_ADMIN_KEY = os.environ.get("APPROVAL_ADMIN_KEY", "")
 
 app = FastAPI(title="self-agent gateway")
+
+GATEWAY_ADMIN_TOKEN = os.environ.get("GATEWAY_ADMIN_TOKEN", "")
+_PUBLIC_PREFIXES = ("/channels/", "/healthz", "/approvals")  # 渠道回调/健康/审批(渠道卡片按钮)
+
+
+@app.middleware("http")
+async def _admin_guard(request: Request, call_next):
+    if GATEWAY_ADMIN_TOKEN and not any(request.url.path.startswith(p) for p in _PUBLIC_PREFIXES):
+        if request.headers.get("X-Admin-Token") != GATEWAY_ADMIN_TOKEN:
+            from fastapi.responses import JSONResponse
+
+            return JSONResponse({"detail": "需要 X-Admin-Token"}, status_code=401)
+    return await call_next(request)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=os.environ.get("GATEWAY_CORS", "http://localhost:3000").split(","),
@@ -63,7 +82,8 @@ async def _get_thread(client: httpx.AsyncClient, project: str, channel: str, con
 
 
 async def _stream_run(client: httpx.AsyncClient, thread_id: str, body: dict,
-                      *, project: str = None, auto_approve: bool = False) -> dict:
+                      *, project: str = None, user_id: int | None = None,
+                      auto_approve: bool = False) -> dict:
     """跑一轮 run，返回 {'answer': str|None, 'interrupt': dict|None}。
 
     auto_approve：[SYSTEM_CONFIRMATION] 续跑场景——带 token 的重调会再次
@@ -74,7 +94,9 @@ async def _stream_run(client: httpx.AsyncClient, thread_id: str, body: dict,
         async with client.stream(
             "POST", f"{AEGRA_BASE}/threads/{thread_id}/runs/stream",
             json={"assistant_id": project or DEFAULT_PROJECT,
-                  "stream_mode": ["values"], **payload},
+                  "stream_mode": ["values"],
+                  "context": {"user_id": user_id, "project": project or DEFAULT_PROJECT},
+                  **payload},
             timeout=600,
         ) as resp:
             async for line in resp.aiter_lines():
@@ -175,7 +197,7 @@ async def _handle_message(channel_name: str, msg: dict) -> None:
         identity.log_message(project, channel_name, conv, "out", markdown, None)
         await ch.send(conv, markdown)
 
-    async with httpx.AsyncClient() as client:
+    async with _aegra_client() as client:
         thread_id = await _get_thread(client, project, channel_name, conv)
         logger.info("handle[%s/%s:%s] thread=%s 开跑", project, channel_name, conv, thread_id)
 
@@ -185,6 +207,10 @@ async def _handle_message(channel_name: str, msg: dict) -> None:
         m = re.match(r"^(同意|批准|拒绝)\s*(\d+)$", text)
         if m:
             approve = m.group(1) != "拒绝"
+            if (os.environ.get("APPROVAL_REQUIRE_ADMIN") == "1"
+                    and identity.get_role(user_id) != "admin"):
+                await send(f"审批单 {m.group(2)}：你没有审批权限（需要 admin 角色）。")
+                return
             rec = identity.decide_approval(int(m.group(2)), approve=approve, decided_by=user_id)
             if not rec:
                 await send(f"审批单 {m.group(2)} 不存在或已处理。")
@@ -193,7 +219,7 @@ async def _handle_message(channel_name: str, msg: dict) -> None:
                         else {"type": "reject", "message": f"用户#{user_id} 拒绝"})
             result = await _stream_run(client, rec["thread_id"],
                                        {"command": {"resume": {"decisions": [decision]}}},
-                                       project=project)
+                                       project=project, user_id=user_id)
             if approve:
                 bridged = await _bridge_server_approval(client, rec["thread_id"], user_id,
                                                         result["interrupt"], project=project)
@@ -203,7 +229,7 @@ async def _handle_message(channel_name: str, msg: dict) -> None:
             result = await _stream_run(
                 client, thread_id,
                 {"input": {"messages": [{"type": "human", "content": text}]}},
-                project=project)
+                project=project, user_id=user_id)
 
         if result["interrupt"]:
             summary = json.dumps(result["interrupt"].get("action_requests"), ensure_ascii=False)[:500]
@@ -272,6 +298,20 @@ async def api_projects():
         out.append({"name": name, "display_name": p.display_name,
                     "locked_tools": len(p.locked_tools), "skills": p.skills})
     return {"projects": out, "default": DEFAULT_PROJECT}
+
+
+@app.get("/users")
+async def api_users():
+    return {"users": identity.list_users()}
+
+
+@app.post("/users/{user_id}/role")
+async def api_set_role(user_id: int, payload: dict):
+    try:
+        identity.set_role(user_id, payload.get("role", ""))
+    except (ValueError, AssertionError) as e:
+        raise HTTPException(400, str(e)) from e
+    return {"ok": True}
 
 
 @app.get("/messages")
