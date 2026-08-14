@@ -75,7 +75,7 @@ async def main():
         try:
             await asyncio.wait_for(agent.ainvoke(
                 {"messages": [("user", prompt)]},
-                config={"configurable": {"thread_id": f"deliv-{ext}"}, "recursion_limit": 60},
+                config={"configurable": {"thread_id": f"deliv-{ext}"}, "recursion_limit": 160}  # 与 ModelCallLimit(80) 配套，评测不先于框架限额卡住,
             ), timeout=420)
         except Exception as e:  # noqa: BLE001
             print(f"❌ {ext}: run 异常 {type(e).__name__}: {str(e)[:80]}")
