@@ -17,6 +17,7 @@ from langchain.agents.middleware import ModelCallLimitMiddleware
 from . import settings
 from .audit import AuditMiddleware
 from .guard import LoopGuardMiddleware
+from .identity_propagation import make_identity_middleware
 from .model import build_model
 from .project import Project, load_project
 
@@ -102,7 +103,7 @@ def load_subagents(project: Project, tools: list) -> list[dict]:
             "tools": resolved,
             "model": build_model(spec.get("model", "strong")),
             # 子代理有独立中间件栈：审计与守卫都要逐个挂
-            "middleware": [AuditMiddleware(), LoopGuardMiddleware()],
+            "middleware": [make_identity_middleware(), AuditMiddleware(), LoopGuardMiddleware()],
         })
     return subagents
 
@@ -162,7 +163,7 @@ def build_agent(
         tools=tools,
         system_prompt=prompt,
         subagents=load_subagents(project, tools),
-        middleware=[AuditMiddleware(), LoopGuardMiddleware(),
+        middleware=[make_identity_middleware(), AuditMiddleware(), LoopGuardMiddleware(),
                     ModelCallLimitMiddleware(run_limit=80, exit_behavior="end")],
         backend=build_backend(project),
         interrupt_on=interrupts or None,

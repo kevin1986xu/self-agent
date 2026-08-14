@@ -20,12 +20,17 @@ logger = logging.getLogger(__name__)
 def load_mcp_config(project: Project) -> dict[str, dict]:
     if not project.mcp_config_path.exists():
         return {}
+    from .identity_propagation import make_httpx_factory
+
     servers: dict[str, dict] = json.loads(project.mcp_config_path.read_text())
     headers = project.mcp_headers()
     for conn in servers.values():
-        if headers and conn.get("transport") in ("streamable_http", "http", "sse"):
-            conn.setdefault("headers", {}).update(
-                {k: v for k, v in headers.items() if k not in conn.get("headers", {})})
+        if conn.get("transport") in ("streamable_http", "http", "sse"):
+            if headers:
+                conn.setdefault("headers", {}).update(
+                    {k: v for k, v in headers.items() if k not in conn.get("headers", {})})
+            # 下游身份传递：X-Acting-User 恒发；identity_system 配置后按绑定发 X-On-Behalf-Of
+            conn["httpx_client_factory"] = make_httpx_factory(conn.pop("identity_system", None))
     return servers
 
 

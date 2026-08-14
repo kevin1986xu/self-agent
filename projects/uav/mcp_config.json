@@ -1,47 +1,58 @@
 {
   "uav-drone-dispatch-mcp": {
     "transport": "streamable_http",
-    "url": "http://127.0.0.1:8201/mcp"
+    "url": "http://127.0.0.1:8201/mcp",
+    "identity_system": "drone-platform"
   },
   "uav-route-planning-mcp": {
     "transport": "streamable_http",
-    "url": "http://127.0.0.1:8202/mcp"
+    "url": "http://127.0.0.1:8202/mcp",
+    "identity_system": "drone-platform"
   },
   "uav-preflight-mcp": {
     "transport": "streamable_http",
-    "url": "http://127.0.0.1:8203/mcp"
+    "url": "http://127.0.0.1:8203/mcp",
+    "identity_system": "drone-platform"
   },
   "uav-flight-task-mcp": {
     "transport": "streamable_http",
-    "url": "http://127.0.0.1:8204/mcp"
+    "url": "http://127.0.0.1:8204/mcp",
+    "identity_system": "drone-platform"
   },
   "uav-airspace-mcp": {
     "transport": "streamable_http",
-    "url": "http://127.0.0.1:8206/mcp"
+    "url": "http://127.0.0.1:8206/mcp",
+    "identity_system": "drone-platform"
   },
   "uav-alert-mcp": {
     "transport": "streamable_http",
-    "url": "http://127.0.0.1:8207/mcp"
+    "url": "http://127.0.0.1:8207/mcp",
+    "identity_system": "drone-platform"
   },
   "uav-media-mcp": {
     "transport": "streamable_http",
-    "url": "http://127.0.0.1:8208/mcp"
+    "url": "http://127.0.0.1:8208/mcp",
+    "identity_system": "drone-platform"
   },
   "uav-task-schedule-mcp": {
     "transport": "streamable_http",
-    "url": "http://127.0.0.1:8209/mcp"
+    "url": "http://127.0.0.1:8209/mcp",
+    "identity_system": "drone-platform"
   },
   "uav-live-mcp": {
     "transport": "streamable_http",
-    "url": "http://127.0.0.1:8210/mcp"
+    "url": "http://127.0.0.1:8210/mcp",
+    "identity_system": "drone-platform"
   },
   "uav-flight-control-mcp": {
     "transport": "streamable_http",
-    "url": "http://127.0.0.1:8211/mcp"
+    "url": "http://127.0.0.1:8211/mcp",
+    "identity_system": "drone-platform"
   },
   "uav-dock-debug-mcp": {
     "transport": "streamable_http",
-    "url": "http://127.0.0.1:8212/mcp"
+    "url": "http://127.0.0.1:8212/mcp",
+    "identity_system": "drone-platform"
   },
   "playwright": {
     "transport": "stdio",

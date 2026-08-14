@@ -357,6 +357,27 @@ async def api_set_role(user_id: int, payload: dict):
     return {"ok": True}
 
 
+@app.get("/identity/bindings")
+async def api_bindings():
+    from ..identity_propagation import list_bindings
+
+    return {"bindings": list_bindings()}
+
+
+@app.post("/identity/bindings")
+async def api_bind(payload: dict):
+    """绑定用户在外部系统的身份：{user_id, system, external_id}；external_id 空则解绑。"""
+    from ..identity_propagation import bind, unbind
+
+    uid, system = int(payload["user_id"]), payload["system"].strip()
+    ext = (payload.get("external_id") or "").strip()
+    if ext:
+        bind(uid, system, ext)
+    else:
+        unbind(uid, system)
+    return {"ok": True}
+
+
 @app.get("/messages")
 async def api_messages(project: str | None = None, channel: str | None = None,
                        conv: str | None = None, limit: int = 100):
