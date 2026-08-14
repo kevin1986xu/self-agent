@@ -1,5 +1,6 @@
 {
   "graphs": {
-    "agent": "./graph_entry.py:make_graph"
+    "uav": "./graph_entry.py:make_graph_uav",
+    "default": "./graph_entry.py:make_graph_default"
   }
 }

@@ -29,7 +29,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 logger = logging.getLogger(__name__)
 
 AEGRA_BASE = os.environ.get("AEGRA_BASE", "http://127.0.0.1:2027").rstrip("/")
-ASSISTANT_ID = os.environ.get("ASSISTANT_ID", "agent")
+DEFAULT_PROJECT = os.environ.get("DEFAULT_PROJECT", "default")  # assistant_id = 项目名
 APPROVAL_BASE = os.environ.get("APPROVAL_BASE", "http://127.0.0.1:8205").rstrip("/")
 APPROVAL_ADMIN_KEY = os.environ.get("APPROVAL_ADMIN_KEY", "")
 
@@ -44,8 +44,8 @@ app.add_middleware(
 _thread_cache: dict[str, str] = {}
 
 
-async def _get_thread(client: httpx.AsyncClient, channel: str, conv: str) -> str:
-    key = f"{channel}:{conv}"
+async def _get_thread(client: httpx.AsyncClient, project: str, channel: str, conv: str) -> str:
+    key = f"{project}:{channel}:{conv}"
     if key in _thread_cache:
         return _thread_cache[key]
     r = await client.post(f"{AEGRA_BASE}/threads/search",
@@ -55,14 +55,15 @@ async def _get_thread(client: httpx.AsyncClient, channel: str, conv: str) -> str
         tid = hits[0]["thread_id"]
     else:
         r = await client.post(f"{AEGRA_BASE}/threads",
-                              json={"metadata": {"gateway_key": key, "channel": channel}})
+                              json={"metadata": {"gateway_key": key, "project": project,
+                                                 "channel": channel}})
         tid = r.json()["thread_id"]
     _thread_cache[key] = tid
     return tid
 
 
 async def _stream_run(client: httpx.AsyncClient, thread_id: str, body: dict,
-                      *, auto_approve: bool = False) -> dict:
+                      *, project: str = None, auto_approve: bool = False) -> dict:
     """跑一轮 run，返回 {'answer': str|None, 'interrupt': dict|None}。
 
     auto_approve：[SYSTEM_CONFIRMATION] 续跑场景——带 token 的重调会再次
@@ -72,7 +73,8 @@ async def _stream_run(client: httpx.AsyncClient, thread_id: str, body: dict,
         last = None
         async with client.stream(
             "POST", f"{AEGRA_BASE}/threads/{thread_id}/runs/stream",
-            json={"assistant_id": ASSISTANT_ID, "stream_mode": ["values"], **payload},
+            json={"assistant_id": project or DEFAULT_PROJECT,
+                  "stream_mode": ["values"], **payload},
             timeout=600,
         ) as resp:
             async for line in resp.aiter_lines():
@@ -102,7 +104,8 @@ async def _stream_run(client: httpx.AsyncClient, thread_id: str, body: dict,
 
 
 async def _bridge_server_approval(client: httpx.AsyncClient, thread_id: str,
-                                  user_id: int, pending_interrupt: dict | None) -> dict | None:
+                                  user_id: int, pending_interrupt: dict | None,
+                                  *, project: str = None) -> dict | None:
     """双层人在环桥接（方案 4.5）：框架层批准后，工具无 token 执行只会在
     审批服务登记待确认单——本函数代表已同意的用户完成第二层：
 
@@ -140,13 +143,13 @@ async def _bridge_server_approval(client: httpx.AsyncClient, thread_id: str,
             return await _stream_run(
                 client, thread_id,
                 {"command": {"resume": {"decisions": [{"type": "edit", "edited_action": edited}]}}},
-                auto_approve=True)
+                project=project, auto_approve=True)
     msg = (f"[SYSTEM_CONFIRMATION] 动作 {tok['action']}（单号 {tok['action_id']}）已获人工批准，"
            f"confirm_token={tok['confirm_token']}。请携带该 confirm_token 参数重新执行原操作，"
            f"完成后继续既定任务。")
     return await _stream_run(client, thread_id,
                              {"input": {"messages": [{"type": "human", "content": msg}]}},
-                             auto_approve=True)
+                             project=project, auto_approve=True)
 
 
 def _format_card(approval_id: int, interrupt_value: dict) -> str:
@@ -162,13 +165,19 @@ def _format_card(approval_id: int, interrupt_value: dict) -> str:
 
 async def _handle_message(channel_name: str, msg: dict) -> None:
     ch = CHANNELS[channel_name]
-    logger.info("handle[%s:%s] 身份登记", channel_name, msg["conversation_key"])
+    project = msg.get("project") or DEFAULT_PROJECT
     user_id = identity.get_or_create_user(channel_name, msg["channel_user_id"], msg.get("display_name"))
     conv = msg["conversation_key"]
     text = msg["text"]
+    identity.log_message(project, channel_name, conv, "in", text, user_id)
+
+    async def send(markdown: str) -> None:
+        identity.log_message(project, channel_name, conv, "out", markdown, None)
+        await ch.send(conv, markdown)
+
     async with httpx.AsyncClient() as client:
-        thread_id = await _get_thread(client, channel_name, conv)
-        logger.info("handle[%s:%s] thread=%s 开跑", channel_name, conv, thread_id)
+        thread_id = await _get_thread(client, project, channel_name, conv)
+        logger.info("handle[%s/%s:%s] thread=%s 开跑", project, channel_name, conv, thread_id)
 
         # 快捷审批口令：同意/拒绝 <单号>
         import re
@@ -178,28 +187,30 @@ async def _handle_message(channel_name: str, msg: dict) -> None:
             approve = m.group(1) != "拒绝"
             rec = identity.decide_approval(int(m.group(2)), approve=approve, decided_by=user_id)
             if not rec:
-                await ch.send(conv, f"审批单 {m.group(2)} 不存在或已处理。")
+                await send(f"审批单 {m.group(2)} 不存在或已处理。")
                 return
             decision = ({"type": "approve"} if approve
                         else {"type": "reject", "message": f"用户#{user_id} 拒绝"})
             result = await _stream_run(client, rec["thread_id"],
-                                       {"command": {"resume": {"decisions": [decision]}}})
+                                       {"command": {"resume": {"decisions": [decision]}}},
+                                       project=project)
             if approve:
                 bridged = await _bridge_server_approval(client, rec["thread_id"], user_id,
-                                                        result["interrupt"])
+                                                        result["interrupt"], project=project)
                 if bridged:
                     result = bridged
         else:
             result = await _stream_run(
                 client, thread_id,
-                {"input": {"messages": [{"type": "human", "content": text}]}})
+                {"input": {"messages": [{"type": "human", "content": text}]}},
+                project=project)
 
         if result["interrupt"]:
             summary = json.dumps(result["interrupt"].get("action_requests"), ensure_ascii=False)[:500]
             approval_id = identity.create_approval(thread_id, user_id, summary)
-            await ch.send(conv, _format_card(approval_id, result["interrupt"]))
+            await send(_format_card(approval_id, result["interrupt"]))
         elif result["answer"]:
-            await ch.send(conv, result["answer"])
+            await send(result["answer"])
 
 
 @app.post("/channels/{channel}/webhook")
@@ -228,11 +239,13 @@ async def decide(approval_id: int, payload: dict):
     decision = ({"type": "approve"} if payload.get("approve")
                 else {"type": "reject", "message": f"用户#{user_id} 拒绝"})
     async with httpx.AsyncClient() as client:
+        project = payload.get("project") or DEFAULT_PROJECT
         result = await _stream_run(client, rec["thread_id"],
-                                   {"command": {"resume": {"decisions": [decision]}}})
+                                   {"command": {"resume": {"decisions": [decision]}}},
+                                   project=project)
         if payload.get("approve"):
             bridged = await _bridge_server_approval(client, rec["thread_id"], user_id,
-                                                    result["interrupt"])
+                                                    result["interrupt"], project=project)
             if bridged:
                 result = bridged
     return {"ok": True, "answer": result["answer"], "interrupt": bool(result["interrupt"])}
@@ -247,6 +260,24 @@ async def local_outbox(conv: str):
 @app.get("/healthz")
 async def healthz():
     return {"status": "ok"}
+
+
+@app.get("/projects")
+async def api_projects():
+    from ..project import list_projects, load_project
+
+    out = []
+    for name in list_projects():
+        p = load_project(name)
+        out.append({"name": name, "display_name": p.display_name,
+                    "locked_tools": len(p.locked_tools), "skills": p.skills})
+    return {"projects": out, "default": DEFAULT_PROJECT}
+
+
+@app.get("/messages")
+async def api_messages(project: str | None = None, channel: str | None = None,
+                       conv: str | None = None, limit: int = 100):
+    return {"messages": identity.list_messages(project, channel, conv, limit)}
 
 
 # ============ 工作区文件（M2-11 前端文件面板数据源） ============
@@ -444,7 +475,8 @@ async def _launch_playbook(pb: dict, params: dict | None, trigger: str) -> None:
     text = playbook.render(pb, params)
     playbook.mark_run(pb["id"])
     msg = {"channel_user_id": f"playbook:{pb['name']}", "display_name": f"模板[{pb['name']}]",
-           "conversation_key": pb["conversation_key"], "text": text}
+           "conversation_key": pb["conversation_key"], "text": text,
+           "project": pb.get("project")}
     logger.info("playbook %s 发起（%s）→ %s:%s", pb["name"], trigger,
                 pb["channel"], pb["conversation_key"])
     try:

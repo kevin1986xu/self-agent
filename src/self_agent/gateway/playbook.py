@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS playbook (
     cron TEXT,                                -- 空=手动模板；如 '0 9 * * 1'
     channel TEXT NOT NULL DEFAULT 'local',
     conversation_key TEXT NOT NULL DEFAULT 'playbook',
+    project TEXT NOT NULL DEFAULT 'default',
     enabled BOOLEAN NOT NULL DEFAULT true,
     last_run_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT now()
@@ -40,14 +41,14 @@ def _conn():
 
 
 _COLS = ["id", "name", "prompt_template", "default_params", "cron",
-         "channel", "conversation_key", "enabled", "last_run_at", "created_at"]
+         "channel", "conversation_key", "project", "enabled", "last_run_at", "created_at"]
 
 
 def list_playbooks() -> list[dict]:
     with _conn() as c:
         rows = c.execute(
             "SELECT id,name,prompt_template,default_params,cron,channel,"
-            "conversation_key,enabled,last_run_at::text,created_at::text"
+            "conversation_key,project,enabled,last_run_at::text,created_at::text"
             " FROM playbook ORDER BY id").fetchall()
     return [dict(zip(_COLS, r)) for r in rows]
 
@@ -58,20 +59,21 @@ def upsert(spec: dict) -> dict:
     with _conn() as c:
         row = c.execute(
             """INSERT INTO playbook (name, prompt_template, default_params, cron,
-                                     channel, conversation_key, enabled)
+                                     channel, conversation_key, project, enabled)
                VALUES (%(name)s, %(prompt_template)s, %(default_params)s, %(cron)s,
-                       %(channel)s, %(conversation_key)s, %(enabled)s)
+                       %(channel)s, %(conversation_key)s, %(project)s, %(enabled)s)
                ON CONFLICT (name) DO UPDATE SET
                  prompt_template=EXCLUDED.prompt_template,
                  default_params=EXCLUDED.default_params, cron=EXCLUDED.cron,
                  channel=EXCLUDED.channel, conversation_key=EXCLUDED.conversation_key,
-                 enabled=EXCLUDED.enabled
+                 project=EXCLUDED.project, enabled=EXCLUDED.enabled
                RETURNING id""",
             {"name": spec["name"], "prompt_template": spec["prompt_template"],
              "default_params": _json.dumps(spec.get("default_params") or {}, ensure_ascii=False),
              "cron": spec.get("cron") or None,
              "channel": spec.get("channel", "local"),
              "conversation_key": spec.get("conversation_key", "playbook"),
+             "project": spec.get("project", "default"),
              "enabled": spec.get("enabled", True)}).fetchone()
     return {"id": row[0]}
 

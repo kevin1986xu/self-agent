@@ -26,6 +26,18 @@ CREATE TABLE IF NOT EXISTS gateway_approval (
     created_at TIMESTAMPTZ DEFAULT now(),
     decided_at TIMESTAMPTZ
 );
+CREATE TABLE IF NOT EXISTS gateway_message (
+    id BIGSERIAL PRIMARY KEY,
+    ts TIMESTAMPTZ DEFAULT now(),
+    project TEXT NOT NULL,
+    channel TEXT NOT NULL,
+    conversation_key TEXT NOT NULL,
+    direction TEXT NOT NULL,                  -- in / out
+    user_id BIGINT,
+    content TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS gateway_message_conv
+    ON gateway_message (project, channel, conversation_key, id);
 """
 
 
@@ -50,6 +62,31 @@ def get_or_create_user(channel: str, channel_user_id: str, display_name: str | N
                RETURNING user_id""",
             (channel, channel_user_id, display_name)).fetchone()
     return row[0]
+
+
+def log_message(project: str, channel: str, conversation_key: str, direction: str,
+                content: str, user_id: int | None = None) -> None:
+    """渠道消息留痕（R 消息记录）：进出双向、按项目/会话可查。"""
+    with _conn() as c:
+        c.execute(
+            "INSERT INTO gateway_message (project, channel, conversation_key, direction, user_id, content)"
+            " VALUES (%s,%s,%s,%s,%s,%s)",
+            (project, channel, conversation_key, direction, user_id, content[:20000]))
+
+
+def list_messages(project: str | None = None, channel: str | None = None,
+                  conversation_key: str | None = None, limit: int = 100) -> list[dict]:
+    with _conn() as c:
+        rows = c.execute(
+            """SELECT ts::text, project, channel, conversation_key, direction, user_id, content
+               FROM gateway_message
+               WHERE (%s::text IS NULL OR project=%s) AND (%s::text IS NULL OR channel=%s)
+                 AND (%s::text IS NULL OR conversation_key=%s)
+               ORDER BY id DESC LIMIT %s""",
+            (project, project, channel, channel, conversation_key, conversation_key,
+             min(limit, 500))).fetchall()
+    keys = ["ts", "project", "channel", "conversation_key", "direction", "user_id", "content"]
+    return [dict(zip(keys, r)) for r in rows]
 
 
 def create_approval(thread_id: str, user_id: int, action_summary: str) -> int:

@@ -1,0 +1,16 @@
+{
+  "research": {
+    "description": "网页研究代理：用浏览器检索公开网页、抓取整理资料并输出结构化结论。",
+    "system_prompt": "你是网页研究子代理，使用浏览器工具检索与阅读公开网页，输出带来源链接的结构化结论。不要访问需要登录的站点；遇到验证码即停止并报告。回答使用中文。",
+    "tools": ["browser_navigate", "browser_navigate_back", "browser_snapshot", "browser_click",
+              "browser_type", "browser_fill_form", "browser_select_option", "browser_press_key",
+              "browser_wait_for", "browser_tabs", "browser_console_messages", "browser_close"],
+    "model": "cheap"
+  },
+  "doc-writer": {
+    "description": "文档产出代理：把已有材料整理成 PPT/Word/Excel/PDF 交付物。",
+    "system_prompt": "你是文档产出子代理，按技能说明用工作区技能脚本生成交付物，数据必须来自任务上下文，不得编造。回答使用中文。",
+    "tools": [],
+    "model": "strong"
+  }
+}

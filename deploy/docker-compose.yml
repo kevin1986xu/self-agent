@@ -78,7 +78,7 @@ services:
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: ${PUBLIC_AEGRA_URL:-http://localhost:2027}
-      NEXT_PUBLIC_ASSISTANT_ID: agent
+      NEXT_PUBLIC_ASSISTANT_ID: ${DEFAULT_PROJECT:-default}
       NEXT_PUBLIC_GATEWAY_URL: ${PUBLIC_GATEWAY_URL:-http://localhost:8400}
     ports:
       - "3000:3000"

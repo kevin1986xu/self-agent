@@ -1,0 +1,55 @@
+{
+  "uav-drone-dispatch-mcp": {
+    "transport": "streamable_http",
+    "url": "http://127.0.0.1:8201/mcp"
+  },
+  "uav-route-planning-mcp": {
+    "transport": "streamable_http",
+    "url": "http://127.0.0.1:8202/mcp"
+  },
+  "uav-preflight-mcp": {
+    "transport": "streamable_http",
+    "url": "http://127.0.0.1:8203/mcp"
+  },
+  "uav-flight-task-mcp": {
+    "transport": "streamable_http",
+    "url": "http://127.0.0.1:8204/mcp"
+  },
+  "uav-airspace-mcp": {
+    "transport": "streamable_http",
+    "url": "http://127.0.0.1:8206/mcp"
+  },
+  "uav-alert-mcp": {
+    "transport": "streamable_http",
+    "url": "http://127.0.0.1:8207/mcp"
+  },
+  "uav-media-mcp": {
+    "transport": "streamable_http",
+    "url": "http://127.0.0.1:8208/mcp"
+  },
+  "uav-task-schedule-mcp": {
+    "transport": "streamable_http",
+    "url": "http://127.0.0.1:8209/mcp"
+  },
+  "uav-live-mcp": {
+    "transport": "streamable_http",
+    "url": "http://127.0.0.1:8210/mcp"
+  },
+  "uav-flight-control-mcp": {
+    "transport": "streamable_http",
+    "url": "http://127.0.0.1:8211/mcp"
+  },
+  "uav-dock-debug-mcp": {
+    "transport": "streamable_http",
+    "url": "http://127.0.0.1:8212/mcp"
+  },
+  "playwright": {
+    "transport": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@playwright/mcp@latest",
+      "--headless"
+    ]
+  }
+}

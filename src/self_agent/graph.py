@@ -1,18 +1,27 @@
-"""LangGraph Server 图入口（开发期 `langgraph dev` / 生产协议端点共用）。
+"""LangGraph Server 图入口（多项目：每个项目一个图 / assistant_id）。
 
-服务端自管持久化与线程，这里不传 checkpointer（langgraph-api 会拒绝自定义
-checkpointer）。MCP 工具在图构建时异步加载。
+aegra.json 的 graphs 段把每个项目映射到 make_graph_for(<项目名>) 生成的工厂；
+前端/网关切项目 = 切 assistant_id。新增项目后在 aegra.json 加一行即可。
 
-可观测（M1-10）：走宿主 Aegra 的原生 OTel 集成（OTEL_TARGETS=LANGFUSE +
-LANGFUSE_BASE_URL/PUBLIC_KEY/SECRET_KEY 环境变量），图本体保持纯净——
-教训：graph.with_config(callbacks=[LangfuseHandler]) 会让 Aegra 的
-checkpointer 注入失败（handler 不可深拷贝），run 会静默失去持久化。
+可观测走宿主 Aegra 的原生 OTel 集成（OTEL_TARGETS=LANGFUSE），图保持纯净——
+教训：graph.with_config(callbacks=...) 会破坏 checkpointer 注入。
 """
 
 from .agent import build_agent
 from .mcp import load_mcp_tools
+from .project import load_project
 
 
-async def make_graph():
-    tools, down = await load_mcp_tools()
-    return build_agent(tools, down_domains=down, checkpointer=None)
+def make_graph_for(project_name: str):
+    async def make_graph():
+        project = load_project(project_name)
+        tools, down = await load_mcp_tools(project)
+        return build_agent(project, tools, down_domains=down, checkpointer=None)
+
+    make_graph.__name__ = f"make_graph_{project_name}"
+    return make_graph
+
+
+# aegra.json / langgraph.json 引用的具名工厂
+make_graph_uav = make_graph_for("uav")
+make_graph_default = make_graph_for("default")

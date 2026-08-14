@@ -22,6 +22,7 @@ from langgraph.types import Command
 
 from self_agent.agent import build_agent
 from self_agent.mcp import load_mcp_tools
+from self_agent.project import load_project
 
 EVALSET = Path("/Users/kevinxu/source/agent/无人机智能体/正式开发/eval/evalset.jsonl")
 BASELINE = Path("/Users/kevinxu/source/agent/无人机智能体/正式开发/eval/last_run.json")
@@ -82,9 +83,10 @@ async def main():
     ids = [int(a) for a in sys.argv[1:]] or [1, 8, 9, 26, 40, 43, 46, 50, 56, 71]
     cases = {c["id"]: c for c in map(json.loads, EVALSET.open())}
     baseline = {r["id"]: r for r in json.load(BASELINE.open())}
-    tools, down = await load_mcp_tools()
+    PROJECT = load_project("uav")
+    tools, down = await load_mcp_tools(PROJECT)
     print(f"MCP 工具 {len(tools)} 个；不可用域: {down or '无'}")
-    agent = build_agent(tools, down_domains=down, checkpointer=InMemorySaver(),
+    agent = build_agent(PROJECT, tools, down_domains=down, checkpointer=InMemorySaver(),
                         store=InMemoryStore())  # /memories 路由需要 store（#8 教训）
 
     results = []

@@ -1,4 +1,4 @@
-"""M0 冒烟测试：不依赖网络与真实密钥的部分。"""
+"""M0/通用化 冒烟测试：不依赖网络与真实密钥的部分。"""
 
 import json
 import sys
@@ -11,38 +11,53 @@ import os
 os.environ.setdefault("DASHSCOPE_API_KEY", "sk-dummy-for-test")
 
 
-def test_mcp_config_injects_api_key(tmp_path, monkeypatch):
-    cfg = tmp_path / "mcp.json"
-    cfg.write_text(json.dumps({
+def test_projects_load():
+    from self_agent.project import list_projects, load_project
+
+    names = list_projects()
+    assert "uav" in names and "default" in names
+    uav = load_project("uav")
+    assert "dispatch_drone" in uav.locked_tools
+    assert uav.knowledge_scope == "uav"
+    default = load_project("default")
+    assert default.locked_tools == []
+
+
+def test_mcp_config_injects_headers_by_project(tmp_path, monkeypatch):
+    from self_agent import mcp
+    from self_agent.project import Project
+
+    d = tmp_path / "p1"
+    d.mkdir()
+    (d / "mcp_config.json").write_text(json.dumps({
         "d1": {"transport": "streamable_http", "url": "http://127.0.0.1:9999/mcp"},
         "d2": {"transport": "stdio", "command": "echo"},
     }))
-    from self_agent import mcp, settings
-    monkeypatch.setattr(settings, "MCP_CONFIG_PATH", cfg)
-    monkeypatch.setattr(settings, "UAV_MCP_API_KEY", "test-key")
-    servers = mcp.load_mcp_config()
+    monkeypatch.setenv("TEST_KEY_ENV", "test-key")
+    p = Project(name="p1", display_name="t", role_prompt="",
+                mcp_headers_env={"X-API-Key": "TEST_KEY_ENV"}, dir=d)
+    servers = mcp.load_mcp_config(p)
     assert servers["d1"]["headers"]["X-API-Key"] == "test-key"
     assert "headers" not in servers["d2"]  # stdio 不注入
 
 
-def test_build_agent_with_interrupts():
+def test_build_agent_per_project(tmp_path, monkeypatch):
     from langchain_core.tools import tool
 
-    from self_agent.agent import LOCKED_TOOLS, build_agent
+    from self_agent import settings
+    from self_agent.agent import build_agent
+    from self_agent.project import load_project
+
+    monkeypatch.setattr(settings, "WORKSPACE_ROOT", tmp_path)
 
     @tool
     def dispatch_drone(drone_id: str) -> str:
         """派机（测试桩）。"""
         return "ok"
 
-    @tool
-    def query_plots(region: str) -> str:
-        """查图斑（测试桩）。"""
-        return "[]"
-
-    assert "dispatch_drone" in LOCKED_TOOLS
-    agent = build_agent([dispatch_drone, query_plots], down_domains=["uav-preflight"])
-    # 编译产物存在且包含 task/write_todos 等 harness 工具由 deepagents 保证；
-    # 这里验证组装不抛错、图对象可用
-    assert agent is not None
-    assert agent.get_graph() is not None
+    uav = build_agent(load_project("uav"), [dispatch_drone])
+    assert uav.get_graph() is not None
+    default = build_agent(load_project("default"), [dispatch_drone])
+    assert default.get_graph() is not None
+    # 项目工作区隔离
+    assert (tmp_path / "uav").exists() and (tmp_path / "default").exists()

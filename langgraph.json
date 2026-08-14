@@ -1,7 +1,8 @@
 {
   "dependencies": ["."],
   "graphs": {
-    "agent": "self_agent.graph:make_graph"
+    "uav": "self_agent.graph:make_graph_uav",
+    "default": "self_agent.graph:make_graph_default"
   },
   "env": ".env"
 }

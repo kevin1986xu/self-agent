@@ -17,6 +17,7 @@ from langgraph.store.memory import InMemoryStore
 from self_agent import settings
 from self_agent.agent import build_agent
 from self_agent.mcp import load_mcp_tools
+from self_agent.project import load_project
 
 WORK = settings.WORKSPACE_ROOT / "work"
 
@@ -62,8 +63,9 @@ CASES = [
 
 
 async def main():
-    tools, down = await load_mcp_tools()
-    agent = build_agent(tools, down_domains=down, checkpointer=InMemorySaver(),
+    PROJECT = load_project("uav")
+    tools, down = await load_mcp_tools(PROJECT)
+    agent = build_agent(PROJECT, tools, down_domains=down, checkpointer=InMemorySaver(),
                         store=InMemoryStore())
     WORK.mkdir(parents=True, exist_ok=True)
     passed = 0

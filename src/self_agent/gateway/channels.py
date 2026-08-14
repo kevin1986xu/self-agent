@@ -38,6 +38,7 @@ class LocalChannel:
             "display_name": payload.get("name"),
             "conversation_key": str(payload.get("conv", payload["user"])),
             "text": payload["text"],
+            "project": payload.get("project"),
         }
 
     async def send(self, conversation_key: str, markdown: str) -> None:

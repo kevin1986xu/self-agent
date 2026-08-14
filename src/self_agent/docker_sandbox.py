@@ -50,7 +50,15 @@ def ensure_container() -> bool:
 
 
 class DockerShellBackend(WorkspaceShellBackend):
-    """execute 走容器，文件工具继承宿主实现。"""
+    """execute 走容器，文件工具继承宿主实现。容器挂载工作区总根，
+    各项目工作区对应容器内 /workspace/<相对路径>。"""
+
+    def _workdir(self) -> str:
+        try:
+            rel = self.root_dir.resolve().relative_to(settings.WORKSPACE_ROOT.resolve())
+            return f"/workspace/{rel}" if str(rel) != "." else "/workspace"
+        except (ValueError, AttributeError):
+            return "/workspace"
 
     def execute(self, command: str, *, timeout: int | None = None) -> ExecuteResponse:
         if not ensure_container():
@@ -58,7 +66,7 @@ class DockerShellBackend(WorkspaceShellBackend):
         cmd = rewrite_virtual_paths(command)
         t = timeout or DEFAULT_TIMEOUT
         try:
-            r = _sh(["docker", "exec", "-w", "/workspace", CONTAINER,
+            r = _sh(["docker", "exec", "-w", self._workdir(), CONTAINER,
                      "sh", "-c", cmd], timeout=t)
         except subprocess.TimeoutExpired:
             return ExecuteResponse(output=f"[timeout] 超过 {t}s", exit_code=124, truncated=False)
@@ -74,13 +82,15 @@ class DockerShellBackend(WorkspaceShellBackend):
         return await asyncio.to_thread(self.execute, command, **kwargs)
 
 
-def build_shell_backend():
-    """按 SANDBOX_MODE 返回 shell 后端（build_backend 的注入点）。"""
+def build_shell_backend(root_dir=None):
+    """按 SANDBOX_MODE 返回 shell 后端（build_backend 的注入点）。
+    root_dir：项目工作区（默认工作区总根，兼容单项目场景）。"""
     import os
 
     mode = os.environ.get("SANDBOX_MODE", "local")
+    root = root_dir or settings.WORKSPACE_ROOT
     venv_bin = settings.PROJECT_ROOT / ".venv" / "bin"
-    kwargs = dict(root_dir=settings.WORKSPACE_ROOT, virtual_mode=True, timeout=DEFAULT_TIMEOUT,
+    kwargs = dict(root_dir=root, virtual_mode=True, timeout=DEFAULT_TIMEOUT,
                   env={"PATH": f"{venv_bin}:/usr/bin:/bin"}, inherit_env=False)
     if mode == "docker":
         logger.info("沙箱模式：docker（execute 进容器，--network none）")

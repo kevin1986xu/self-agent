@@ -139,7 +139,8 @@ def _query_terms(query: str, cap: int = 10) -> list[str]:
     return seen[:cap]
 
 
-def search(query: str, *, k: int = 5) -> list[dict]:
+def search(query: str, *, k: int = 5, scope: str | None = None) -> list[dict]:
+    """scope: 项目作用域；命中该 scope 与 global 的文档。None=不过滤。"""
     with _conn() as c:
         vec = _embed([query]) if (EMB_BASE and EMB_KEY and EMB_MODEL) else None
         if vec:
@@ -147,8 +148,9 @@ def search(query: str, *, k: int = 5) -> list[dict]:
                 """SELECT d.filename, ch.seq, ch.content, 1 - (ch.embedding <=> %s::vector) AS score
                    FROM knowledge_chunk ch JOIN knowledge_doc d ON d.id = ch.doc_id
                    WHERE ch.embedding IS NOT NULL
+                     AND (%s::text IS NULL OR d.scope IN (%s, 'global'))
                    ORDER BY ch.embedding <=> %s::vector LIMIT %s""",
-                (vec[0], vec[0], k)).fetchall()
+                (vec[0], scope, scope, vec[0], k)).fetchall()
         else:
             # trgm 模式：整句 word_similarity（similarity 会被块长度稀释）
             # + 中文 2-gram 词项覆盖率（语义改写的 query 靠词项部分命中兜底）
@@ -163,8 +165,9 @@ def search(query: str, *, k: int = 5) -> list[dict]:
                              FROM unnest(%s::text[]) AS t)
                           ) AS score
                    FROM knowledge_chunk ch JOIN knowledge_doc d ON d.id = ch.doc_id
+                   WHERE (%s::text IS NULL OR d.scope IN (%s, 'global'))
                    ORDER BY score DESC LIMIT %s""",
-                (query, query, terms, k)).fetchall()
+                (query, query, terms, scope, scope, k)).fetchall()
     return [{"file": r[0], "seq": r[1], "content": r[2], "score": round(float(r[3]), 3)}
             for r in rows if float(r[3]) > 0.05]
 

@@ -55,8 +55,8 @@ def llm_tier(tier: str) -> dict:
 
 # MCP
 UAV_MCP_API_KEY = os.environ.get("UAV_MCP_API_KEY", "")
-MCP_CONFIG_PATH = Path(
-    os.environ.get("MCP_CONFIG_PATH", PROJECT_ROOT / "config" / "mcp_config.json")
+MCP_CONFIG_PATH = Path(  # Nacos 同步桥的写入目标（uav 项目的 MCP 配置）
+    os.environ.get("MCP_CONFIG_PATH", PROJECT_ROOT / "projects" / "uav" / "mcp_config.json")
 )
 
 # 会话工作区根目录（P0 沙箱：每会话一个受限子目录）

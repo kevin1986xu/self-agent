@@ -18,6 +18,7 @@ from langgraph.types import Command
 
 from self_agent.agent import build_agent
 from self_agent.mcp import load_mcp_tools
+from self_agent.project import load_project
 
 
 def print_new_messages(state_update, seen: set):
@@ -52,9 +53,10 @@ async def run_turn(agent, config, payload, seen):
 
 
 async def main():
-    tools, down = await load_mcp_tools()
+    PROJECT = load_project("uav")
+    tools, down = await load_mcp_tools(PROJECT)
     print(f"已加载 MCP 工具 {len(tools)} 个" + (f"；不可用域: {down}" if down else ""))
-    agent = build_agent(tools, down_domains=down, checkpointer=InMemorySaver())
+    agent = build_agent(PROJECT, tools, down_domains=down, checkpointer=InMemorySaver())
     config = {"configurable": {"thread_id": str(uuid.uuid4())}}
     seen: set = set()
 

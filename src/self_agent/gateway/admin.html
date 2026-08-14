@@ -38,6 +38,7 @@ pre { background:#f8fafc; padding:10px; border-radius:6px; font-size:12px; overf
   <button data-tab="knowledge">知识库</button>
   <button data-tab="approvals">审批</button>
   <button data-tab="playbooks">模板任务</button>
+  <button data-tab="messages">消息记录</button>
   <button data-tab="files">工作区文件</button>
 </nav>
 <main id="main"></main>
@@ -111,6 +112,17 @@ async playbooks() {
       <td><button class="op" onclick="runPb(${p.id})">▶ 发起</button>
           <button class="op" onclick="delPb(${p.id})">删除</button></td></tr>`).join("")}
     </table>${playbooks.length?"":'<p class="muted" style="padding:12px">暂无模板。</p>'}</div>`;
+},
+async messages() {
+  const [{messages}, {projects}] = await Promise.all([api("/messages?limit=100"), api("/projects")]);
+  return `<div class="card"><span class="muted">全渠道消息留痕（进/出双向，按项目隔离）。项目：
+    ${projects.map(p=>`<b>${esc(p.name)}</b>(${esc(p.display_name)})`).join("、")}</span></div>
+    <div class="card"><table><tr><th>时间</th><th>项目</th><th>渠道:会话</th><th>向</th><th>内容</th></tr>
+    ${messages.map(m=>`<tr><td class="muted">${esc(m.ts).slice(5,19)}</td><td>${esc(m.project)}</td>
+      <td class="muted">${esc(m.channel)}:${esc(m.conversation_key)}</td>
+      <td>${m.direction==="in"?"👤→":"→🤖"}</td>
+      <td class="muted" style="max-width:460px">${esc(m.content).slice(0,110)}</td></tr>`).join("")}
+    </table>${messages.length?"":'<p class="muted" style="padding:12px">暂无消息。</p>'}</div>`;
 },
 async files() {
   const {files} = await api("/files");
