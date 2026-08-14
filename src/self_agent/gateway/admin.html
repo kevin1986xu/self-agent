@@ -39,16 +39,26 @@ pre { background:#f8fafc; padding:10px; border-radius:6px; font-size:12px; overf
   <button data-tab="approvals">审批</button>
   <button data-tab="playbooks">模板任务</button>
   <button data-tab="messages">消息记录</button>
+  <button data-tab="users">用户</button>
   <button data-tab="files">工作区文件</button>
 </nav>
 <main id="main"></main>
 <div id="toast"></div>
 <script>
 const $ = s => document.querySelector(s);
-const api = (p, opt) => fetch(p, opt).then(async r => {
-  if (!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || r.status);
-  return r.json();
-});
+const api = (p, opt = {}) => {
+  const tk = localStorage.getItem("adminToken");
+  opt.headers = Object.assign({}, opt.headers, tk ? {"X-Admin-Token": tk} : {});
+  return fetch(p, opt).then(async r => {
+    if (r.status === 401) {
+      const t = prompt("需要管理令牌（X-Admin-Token）：");
+      if (t) { localStorage.setItem("adminToken", t); return api(p, opt); }
+      throw new Error("未授权");
+    }
+    if (!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || r.status);
+    return r.json();
+  });
+};
 const toast = m => { const t=$("#toast"); t.textContent=m; t.style.display="block"; setTimeout(()=>t.style.display="none", 2600); };
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
@@ -124,6 +134,17 @@ async messages() {
       <td class="muted" style="max-width:460px">${esc(m.content).slice(0,110)}</td></tr>`).join("")}
     </table>${messages.length?"":'<p class="muted" style="padding:12px">暂无消息。</p>'}</div>`;
 },
+async users() {
+  const {users} = await api("/users");
+  return `<div class="card"><table><tr><th>ID</th><th>渠道</th><th>用户</th><th>昵称</th><th>角色</th><th>注册</th><th>操作</th></tr>
+    ${users.map(u=>`<tr><td>#${u.user_id}</td><td class="muted">${esc(u.channel)}</td>
+      <td>${esc(u.channel_user_id)}</td><td>${esc(u.display_name||"—")}</td>
+      <td><span class="pill ${u.role==="admin"?"enabled":"pending"}">${esc(u.role)}</span></td>
+      <td class="muted">${esc(u.since)}</td>
+      <td><button class="op" onclick="setRole(${u.user_id},'${u.role==="admin"?"member":"admin"}')">
+        设为 ${u.role==="admin"?"member":"admin"}</button></td></tr>`).join("")}
+    </table>${users.length?"":'<p class="muted" style="padding:12px">暂无用户（渠道消息到达后自动登记）。</p>'}</div>`;
+},
 async files() {
   const {files} = await api("/files");
   return `<div class="card"><table><tr><th>路径</th><th>大小</th><th>修改时间</th><th></th></tr>
@@ -182,6 +203,10 @@ async function runPb(id) {
     toast("已发起：" + r.rendered.slice(0,40)); } catch(e){ toast(e.message); }
 }
 async function delPb(id) { await api(`/playbooks/${id}`, {method:"DELETE"}); toast("已删除"); render(); }
+async function setRole(id, role) {
+  try { await api(`/users/${id}/role`, {method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({role})}); toast(`#${id} → ${role}`); render(); } catch(e){ toast(e.message); }
+}
 async function decide(id, approve) {
   try { await api(`/approvals/${id}/decision`, {method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({approve, channel:"admin", channel_user_id:"admin"})});

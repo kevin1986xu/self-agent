@@ -42,7 +42,8 @@ APPROVAL_ADMIN_KEY = os.environ.get("APPROVAL_ADMIN_KEY", "")
 app = FastAPI(title="self-agent gateway")
 
 GATEWAY_ADMIN_TOKEN = os.environ.get("GATEWAY_ADMIN_TOKEN", "")
-_PUBLIC_PREFIXES = ("/channels/", "/healthz", "/approvals")  # 渠道回调/健康/审批(渠道卡片按钮)
+# 豁免：渠道回调(自带验签)/健康/审批(渠道卡片按钮)/管理台页面外壳(数据仍走受保护 API)
+_PUBLIC_PREFIXES = ("/channels/", "/healthz", "/approvals", "/admin")
 
 
 @app.middleware("http")
