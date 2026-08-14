@@ -29,8 +29,11 @@ def load_mcp_config(project: Project) -> dict[str, dict]:
             if headers:
                 conn.setdefault("headers", {}).update(
                     {k: v for k, v in headers.items() if k not in conn.get("headers", {})})
-            # 下游身份传递：X-Acting-User 恒发；identity_system 配置后按绑定发 X-On-Behalf-Of
-            conn["httpx_client_factory"] = make_httpx_factory(conn.pop("identity_system", None))
+            # 下游身份传递：X-Acting-User 恒发；identity_system 配置后按绑定发身份头
+            # （头名按目标系统合同配置，identity_header 默认 X-On-Behalf-Of）
+            conn["httpx_client_factory"] = make_httpx_factory(
+                conn.pop("identity_system", None),
+                conn.pop("identity_header", "X-On-Behalf-Of"))
     return servers
 
 

@@ -19,7 +19,7 @@ from self_agent.agent import build_agent
 from self_agent.mcp import load_mcp_tools
 from self_agent.project import load_project
 
-WORK = settings.WORKSPACE_ROOT / "work"
+WORK = settings.WORKSPACE_ROOT / "uav" / "work"  # 项目化后工作区在项目子目录
 
 
 def _verify_xlsx(p: Path) -> str | None:

@@ -1,0 +1,5 @@
+[    2559ms] TypeError: Cannot read properties of undefined (reading 'lat')
+    at HTMLLIElement.a (https://www.openstreetmap.org/assets/index_modules/search-7f5e1d1e10304d3b89543ac43e189496206e2545edafdb73fc2494264bf46afd.js:1:530)
+    at St.each (https://www.openstreetmap.org/assets/application-56b1e120281c353c3c4abd4bbcb2cfe90ae3dfb4feb5c540cd08121cf9cdbc03.js:11:17507)
+    at St.fn.init.each (https://www.openstreetmap.org/assets/application-56b1e120281c353c3c4abd4bbcb2cfe90ae3dfb4feb5c540cd08121cf9cdbc03.js:11:15972)
+    at https://www.openstreetmap.org/assets/index_modules/search-7f5e1d1e10304d3b89543ac43e189496206e2545edafdb73fc2494264bf46afd.js:1:355

@@ -131,8 +131,11 @@ def make_identity_middleware():
     return IdentityPropagationMiddleware()
 
 
-def make_httpx_factory(identity_system: str | None):
-    """MCP 连接的 httpx 客户端工厂：请求前附加身份头。"""
+def make_httpx_factory(identity_system: str | None, identity_header: str = "X-On-Behalf-Of"):
+    """MCP 连接的 httpx 客户端工厂：请求前附加身份头。
+
+    identity_header 按目标系统的合同配置（如无人机 mcp-services 约定 X-User-Id）。
+    """
 
     async def _add_identity(request: httpx.Request) -> None:
         caller = current_caller.get()
@@ -142,7 +145,7 @@ def make_httpx_factory(identity_system: str | None):
         if identity_system:
             ext = caller["bindings"].get(identity_system)
             if ext:
-                request.headers["X-On-Behalf-Of"] = ext
+                request.headers[identity_header] = ext
 
     def factory(headers: dict[str, str] | None = None,
                 timeout: httpx.Timeout | None = None,

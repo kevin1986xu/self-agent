@@ -1,0 +1,107 @@
+- generic [ref=e1]:
+  - banner [ref=e2]:
+    - heading [level=1] [ref=e3]:
+      - link [ref=e4] [cursor=pointer]:
+        - /url: https://www.openstreetmap.org/#map=5/51.50/-0.10
+        - img "OpenStreetMap 标志" [ref=e5]
+        - text: OpenStreetMap
+      - text: 
+    - generic [ref=e6]:
+      - text:    
+      - navigation [ref=e7]:
+        - generic [ref=e8]:
+          - link "编辑":
+            - /url: https://www.openstreetmap.org/edit#map=5/51.50/-0.10
+          - button [ref=e9]
+        - list [ref=e10]:
+          - listitem [ref=e11]:
+            - link "历史" [ref=e12] [cursor=pointer]:
+              - /url: https://www.openstreetmap.org/history#map=5/51.50/-0.10
+          - listitem [ref=e13]:
+            - link "导出" [ref=e14] [cursor=pointer]:
+              - /url: https://www.openstreetmap.org/export#map=5/51.50/-0.10
+          - listitem [ref=e15]:
+            - link "GPS 轨迹" [ref=e16] [cursor=pointer]:
+              - /url: /traces
+          - listitem [ref=e17]:
+            - link "用户日记" [ref=e18] [cursor=pointer]:
+              - /url: /diary
+          - listitem [ref=e19]:
+            - link "社区" [ref=e20] [cursor=pointer]:
+              - /url: /communities
+          - listitem [ref=e21]:
+            - link "著作权" [ref=e22] [cursor=pointer]:
+              - /url: /copyright
+          - listitem [ref=e23]:
+            - link "帮助" [ref=e24] [cursor=pointer]:
+              - /url: /help
+          - listitem [ref=e25]:
+            - link "捐赠" [ref=e26] [cursor=pointer]:
+              - /url: https://supporting.openstreetmap.org/donate/
+          - listitem [ref=e27]:
+            - link "关于" [ref=e28] [cursor=pointer]:
+              - /url: /about
+        - button "" [ref=e29] [cursor=pointer]
+        - generic [ref=e31]:
+          - link "登录" [ref=e32] [cursor=pointer]:
+            - /url: https://www.openstreetmap.org/login?referer=%2Fsearch%3Fquery%3D%25E6%25B1%2589%25E5%25B7%259D%25E5%25B8%2582%25E4%25BA%25BA%25E6%25B0%2591%25E6%2594%25BF%25E5%25BA%259C#map=5/51.50/-0.10
+          - link "注册" [ref=e33] [cursor=pointer]:
+            - /url: /user/new
+  - generic [ref=e34]:
+    - generic [ref=e35]:
+      - generic [ref=e36]:
+        - generic [ref=e38]:
+          - generic [ref=e39]:
+            - textbox "搜索" [active] [ref=e40]: 汉川市人民政府
+            - button "提交" [ref=e42] [cursor=pointer]
+          - link "查找两点之间的方向" [ref=e50] [cursor=pointer]:
+            - /url: /directions
+        - text:    
+      - button "关闭" [ref=e56] [cursor=pointer]
+      - generic [ref=e59]:
+        - heading "搜索结果" [level=2] [ref=e60]
+        - heading [level=4] [ref=e61]:
+          - link "提名者" [ref=e62] [cursor=pointer]:
+            - /url: https://nominatim.openstreetmap.org/search?accept-language=zh-CN%2Czh&extratags=1&format=html&q=%E6%B1%89%E5%B7%9D%E5%B8%82%E4%BA%BA%E6%B0%91%E6%94%BF%E5%BA%9C
+        - status [ref=e65]:
+          - generic [ref=e66]: 加载中……
+    - generic [ref=e67]:
+      - generic:
+        - generic:
+          - generic [ref=e68]:
+            - link "放大" [ref=e69] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e70]: 
+            - link "缩小" [ref=e71] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e72]: 
+          - button "显示我的位置" [ref=e74] [cursor=pointer]:
+            - generic [ref=e75]: 
+          - link "图层" [ref=e77] [cursor=pointer]:
+            - /url: "#"
+            - generic [ref=e78]: 
+          - link "图例" [ref=e80] [cursor=pointer]:
+            - /url: "#"
+            - generic [ref=e81]: 
+          - link "分享" [ref=e83] [cursor=pointer]:
+            - /url: "#"
+            - generic [ref=e84]: 
+          - link "添加注记至地图" [ref=e86]:
+            - /url: "#"
+            - generic [ref=e87]: 
+          - link "查询特征" [ref=e89]:
+            - /url: "#"
+            - generic [ref=e90]: 
+        - generic [ref=e91]:
+          - generic [ref=e92]: 300 km
+          - generic [ref=e93]: 100 mi
+        - generic [ref=e94]:
+          - text: ©
+          - link "OpenStreetMap 贡献者" [ref=e95] [cursor=pointer]:
+            - /url: /copyright
+          - text: ♥️
+          - link "捐款" [ref=e96] [cursor=pointer]:
+            - /url: https://supporting.openstreetmap.org
+          - text: .
+          - link "网站和API条款" [ref=e97] [cursor=pointer]:
+            - /url: https://wiki.osmfoundation.org/wiki/Terms_of_Use

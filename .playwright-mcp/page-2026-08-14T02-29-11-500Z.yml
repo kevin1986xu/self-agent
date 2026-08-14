@@ -1,0 +1,52 @@
+- generic "Google 地图" [ref=e2]:
+  - generic [ref=e3]:
+    - application "地图·使用箭头键即可平移地图。·通过按下相应的数字键，获取关于某个地点的详细信息。" [ref=e8]
+    - search [ref=e14]:
+      - generic [ref=e15]:
+        - combobox [ref=e17]
+        - button "搜索" [ref=e19] [cursor=pointer]:
+          - generic [ref=e20]: 
+        - generic [ref=e21]:
+          - button "路线" [ref=e22] [cursor=pointer]:
+            - generic [ref=e23]: 
+          - generic: 路线
+    - generic [ref=e24]:
+      - generic [ref=e25]:
+        - list [ref=e27]:
+          - listitem [ref=e28]:
+            - button "菜单" [ref=e29] [cursor=pointer]:
+              - generic [ref=e30]: 
+          - listitem [ref=e32]:
+            - button "已保存" [ref=e33] [cursor=pointer]:
+              - generic [ref=e34]: 
+          - listitem [ref=e38]:
+            - button "最近" [disabled] [ref=e39]:
+              - generic [ref=e40]: 
+          - listitem [ref=e45]:
+            - button "下载应用" [ref=e46] [cursor=pointer]:
+              - generic [ref=e47]: 
+        - main [ref=e55]:
+          - generic [ref=e56]:
+            - generic [ref=e63]:
+              - generic:
+                - heading [level=1]
+            - region "可对执行的操作" [ref=e66]:
+              - button "路线" [active] [ref=e68] [cursor=pointer]:
+                - generic [ref=e69]: 
+              - button "保存" [ref=e73] [cursor=pointer]:
+                - generic [ref=e74]: 
+              - button "附近" [ref=e78] [cursor=pointer]:
+                - generic [ref=e79]: 
+              - button "发送到手机" [ref=e83] [cursor=pointer]:
+                - generic [ref=e84]: 
+              - button "分享" [ref=e88] [cursor=pointer]:
+                - generic [ref=e89]: 
+            - link "关于这些数据" [ref=e98] [cursor=pointer]:
+              - /url: https://support.google.com/local-listings?p=how_google_sources&authuser=0&hl=zh-CN
+            - heading "充分利用 Google 地图 登录" [level=2] [ref=e104]:
+              - generic [ref=e105]: 充分利用 Google 地图
+              - button "登录" [ref=e108] [cursor=pointer]
+      - generic [ref=e111]:
+        - button "收起侧边面板" [ref=e112] [cursor=pointer]:
+          - generic [ref=e113]: 
+        - generic [ref=e114]: 收起侧边面板

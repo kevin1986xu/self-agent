@@ -1,0 +1,27 @@
+[     312ms] [LOG] AES init done debug @ https://www.amap.com/search?query=%E6%B1%89%E5%B7%9D%E5%B8%82%E4%BA%BA%E6%B0%91%E6%94%BF%E5%BA%9C:201
+[     492ms] [LOG] Fri Aug 14 2026 10:28:30 GMT+0800 (中国标准时间) @ https://g.alicdn.com/AWSC/et/1.83.41/et_f.js:1
+[     503ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://fourier.taobao.com/rp?ext=51&data=jm_null&random=33796220922191555&href=https%3A%2F%2Fwww.amap.com%2Fsearch%3Fquery%3D%25E6%25B1%2589%25E5%25B7%259D%25E5%25B8%2582%25E4%25BA%25BA%25E6%25B0%2591%25E6%2594%25BF%25E5%25BA%259C&protocol=https:&callback=jsonpCallback:0
+[     612ms] [LOG] <AMap JSAPI> 使用 JSAPI 安全模式，代理服务请以_AMapService 作为一级路由 @ https://webapi.amap.com/maps?v=2.0&key=2f282f369e388ef01bae260cbc35edce&plugin=AMap.Adaptor:0
+[     756ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://w.cnzz.com/q_stat.php?id=1255626299&l=3:0
+[    1019ms] [LOG] [SEO Config] Environment: production @ https://www.amap.com/build/lib.3e788bbf6c9000722343.js:1
+[    1019ms] [LOG] [SEO Config] Configuration: {DEBUG: false, TRACK_ENDPOINT: /service/seo/track, SESSION_TIMEOUT: 1800000, BATCH_ENABLED: true, BATCH_SIZE: 20} @ https://www.amap.com/build/lib.3e788bbf6c9000722343.js:1
+[    1019ms] [LOG] [SEO Config] Configuration applied successfully @ https://www.amap.com/build/lib.3e788bbf6c9000722343.js:1
+[    1041ms] [LOG] [Track] New session detected, reset from_page to 0 @ https://www.amap.com/build/main.3e788bbf6c9000722343.js:0
+[    1042ms] [LOG] [Track] reportBiz success: PC_new_user_landing_old @ https://www.amap.com/build/main.3e788bbf6c9000722343.js:0
+[    1047ms] [LOG] [Track] reportBiz success: PC_new_version_button_show @ https://www.amap.com/build/main.3e788bbf6c9000722343.js:0
+[    1047ms] [LOG] [VersionControl] 新版按钮组件已渲染并初始化 @ https://www.amap.com/build/main.3e788bbf6c9000722343.js:67
+[    1047ms] [LOG] [VersionControl] 新版按钮组件已直接渲染（不依赖灰度控制） @ https://www.amap.com/build/main.3e788bbf6c9000722343.js:67
+[    1049ms] [LOG] [initLoc] @ https://www.amap.com/build/main.3e788bbf6c9000722343.js:80
+[    1049ms] [LOG] [remoteLoc] @ https://www.amap.com/build/main.3e788bbf6c9000722343.js:80
+[    1069ms] [LOG] [watch loc] @ https://www.amap.com/build/main.3e788bbf6c9000722343.js:80
+[    1081ms] [LOG] [Track] reportBiz success: biz_page_view @ https://www.amap.com/build/main.3e788bbf6c9000722343.js:0
+[    1082ms] [LOG] [Route] Enter page: search , from_page: 0 @ https://www.amap.com/build/main.3e788bbf6c9000722343.js:80
+[    1136ms] [LOG] %c [APLUS] -- APLUS INIT SUCCESS background:#3B82FE; padding: 4px; padding-right: 8px; border-radius: 4px; color: #fff; @ :1
+[    1141ms] [LOG] amap.search status start @ https://www.amap.com/build/main.3e788bbf6c9000722343.js:68
+[    1502ms] [LOG] [watch loc] @ https://www.amap.com/build/main.3e788bbf6c9000722343.js:80
+[    1505ms] [WARNING] CardDataManager: No card data found @ https://www.amap.com/build/main.3e788bbf6c9000722343.js:69
+[    1506ms] [LOG] App download content updated with card data: {title: 扫码下载 高德地图, content: 高德地图 哪儿都熟, picUrl: , schema: } @ https://www.amap.com/build/main.3e788bbf6c9000722343.js:66
+[    1542ms] [LOG] [IPCityLoc] @ https://www.amap.com/build/main.3e788bbf6c9000722343.js:80
+[    1551ms] [WARNING] Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently @ https://webapi.amap.com/maps?v=2.0&key=2f282f369e388ef01bae260cbc35edce&plugin=AMap.Adaptor:0
+[    1708ms] [LOG] status: no_data @ https://www.amap.com/build/main.3e788bbf6c9000722343.js:80
+[    1708ms] [LOG] result: {} @ https://www.amap.com/build/main.3e788bbf6c9000722343.js:80

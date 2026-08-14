@@ -1,0 +1,27 @@
+- generic "Google 地图" [ref=e2]:
+  - generic [ref=e3]:
+    - application "主界面" [ref=e8]
+    - generic [ref=e11]:
+      - main [ref=e23]:
+        - generic [ref=e24]:
+          - generic [ref=e30]:
+            - generic:
+              - heading [level=1]
+          - region "可对执行的操作" [ref=e33]:
+            - button "路线" [ref=e35] [cursor=pointer]:
+              - generic [ref=e36]: 
+            - button "保存" [ref=e40] [cursor=pointer]:
+              - generic [ref=e41]: 
+            - button "附近" [ref=e45] [cursor=pointer]:
+              - generic [ref=e46]: 
+            - button "发送到手机" [ref=e50] [cursor=pointer]:
+              - generic [ref=e51]: 
+            - button "分享" [ref=e55] [cursor=pointer]:
+              - generic [ref=e56]: 
+          - link "关于这些数据" [ref=e65] [cursor=pointer]:
+            - /url: https://support.google.com/local-listings?p=how_google_sources&authuser=0&hl=zh-CN
+          - heading "充分利用 Google 地图 登录" [level=2] [ref=e71]:
+            - generic [ref=e72]: 充分利用 Google 地图
+            - button "登录" [ref=e75] [cursor=pointer]
+      - button "收起侧边面板" [ref=e79] [cursor=pointer]:
+        - generic [ref=e80]: 

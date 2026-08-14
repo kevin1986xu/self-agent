@@ -1,0 +1,115 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - img [ref=e4] [cursor=pointer]
+    - text:  
+    - generic [ref=e5]:
+      - textbox "搜索位置、公交站、地铁站" [active] [ref=e6]: 汉川市人民政府
+      - generic [ref=e7]: 
+    - generic [ref=e9]: 
+  - text: 
+  - generic [ref=e15]:
+    - generic [ref=e16] [cursor=pointer]
+    - text:         
+  - generic [ref=e17]:
+    - iframe [ref=e18]:
+      
+    - generic: 30 公里
+    - generic [ref=e32]:
+      - text: ©2026 高德 - GS(2025)5996号 - 甲测资字11112528 -
+      - link "京ICP备2023020281号-12" [ref=e33] [cursor=pointer]:
+        - /url: https://beian.miit.gov.cn
+      - text: "-"
+      - link "京公网安备 11010502056787号" [ref=e35] [cursor=pointer]:
+        - /url: //beian.mps.gov.cn/#/query/webSearch?code=11010502056787
+      - text: "|"
+      - link "资质证照" [ref=e37] [cursor=pointer]:
+        - /url: https://a.amap.com/pc/static/page/info.html
+      - text: "|"
+      - link "协议与声明" [ref=e38] [cursor=pointer]:
+        - /url: https://map.amap.com/doc/serviceitem.html
+      - text: "|"
+      - link "开放平台" [ref=e39] [cursor=pointer]:
+        - /url: https://lbs.amap.com/
+      - text: "|"
+      - link "新增地点" [ref=e40] [cursor=pointer]:
+        - /url: https://map.amap.com/help/index.html?type=addpoi
+      - text: "|"
+      - link "意见反馈" [ref=e41] [cursor=pointer]:
+        - /url: https://map.amap.com/help/index.html
+      - text: "|"
+      - link "商户免费标注" [ref=e42] [cursor=pointer]:
+        - /url: http://bgc.amap.com?src=pcbottom
+      - text: "|"
+      - link "车机版" [ref=e43] [cursor=pointer]:
+        - /url: https://www.amapauto.com?src=pc_openapi
+      - text: "|"
+      - link "高德社会责任" [ref=e44] [cursor=pointer]:
+        - /url: https://cache.amap.com/activity/gaode_social_responsibility/index.html
+      - text: "|"
+      - link "网上有害信息举报" [ref=e45] [cursor=pointer]:
+        - /url: https://www.12377.cn/
+      - text: "|"
+      - link "涉未成年人举报" [ref=e46] [cursor=pointer]:
+        - /url: https://a.amap.com/pc/static/page/report.html
+      - text: "|"
+      - link "算法推荐举报" [ref=e47] [cursor=pointer]:
+        - /url: https://a.amap.com/pc/static/page/report.html
+      - text: "|"
+      - link "生活服务专项举报" [ref=e48] [cursor=pointer]:
+        - /url: https://a.amap.com/pc/static/page/report.html
+      - text: "|"
+      - link "廉正举报" [ref=e49] [cursor=pointer]:
+        - /url: https://a.amap.com/pc/static/page/report.html
+  - generic [ref=e50]:
+    - generic [ref=e55] [cursor=pointer]
+    - generic [ref=e59]:
+      - generic [ref=e60] [cursor=pointer]
+      - generic [ref=e61] [cursor=pointer]
+  - generic [ref=e67]:
+    - generic:
+      - link " 卫星" [ref=e68] [cursor=pointer]:
+        - /url: javascript:void(0)
+        - generic [ref=e69]: 
+        - generic [ref=e71]: 卫星
+      - link " 路况" [ref=e72] [cursor=pointer]:
+        - /url: javascript:void(0)
+        - generic [ref=e73]: 
+        - generic [ref=e75]: 路况
+      - link " 测距" [ref=e76] [cursor=pointer]:
+        - /url: javascript:void(0)
+        - generic [ref=e77]: 
+        - generic [ref=e79]: 测距
+      - link " 地铁" [ref=e80] [cursor=pointer]:
+        - /url: javascript:void(0)
+        - generic [ref=e81]: 
+        - generic [ref=e83]: 地铁
+      - link " 全屏" [ref=e84] [cursor=pointer]:
+        - /url: javascript:void(0)
+        - generic [ref=e85]: 
+        - generic [ref=e87]: 全屏
+      - link " 更多" [ref=e88] [cursor=pointer]:
+        - /url: javascript:void(0)
+        - generic [ref=e89]: 
+        - generic [ref=e91]: 更多
+  - generic [ref=e92]:
+    - generic [ref=e97] [cursor=pointer]: 体验新版
+    - generic [ref=e101]:
+      - generic [ref=e102] [cursor=pointer]
+      - generic [ref=e104]:
+        - generic [ref=e105]: 新版上线，骑行路线来了
+        - generic [ref=e106]: 界面焕新，等你体验～
+        - button "立即体验" [ref=e107] [cursor=pointer]
+  - generic [ref=e108]:
+    - generic [ref=e113] [cursor=pointer]: 下载APP
+    - generic [ref=e117]:
+      - generic [ref=e118] [cursor=pointer]
+      - generic [ref=e119]:
+        - generic [ref=e120]: 移动端
+        - generic [ref=e125]:
+          - paragraph [ref=e126]: 扫码下载 高德地图
+          - paragraph [ref=e127]: 高德地图 哪儿都熟
+  - generic [ref=e128]:
+    - generic [ref=e133] [cursor=pointer]:
+      - text: 湖北
+      - generic [ref=e134]: 
+    - text:  
