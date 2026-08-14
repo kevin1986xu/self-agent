@@ -16,8 +16,11 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from deepagents import create_deep_agent
 from deepagents.backends import CompositeBackend, StoreBackend
 
+from langchain.agents.middleware import ModelCallLimitMiddleware
+
 from . import settings
 from .audit import AuditMiddleware
+from .guard import LoopGuardMiddleware
 from .model import build_model
 from .sandbox import WorkspaceShellBackend
 
@@ -124,8 +127,8 @@ def load_subagents(tools: list) -> list[dict]:
             "system_prompt": spec["system_prompt"],
             "tools": resolved,
             "model": build_model(spec.get("model", "strong")),
-            # 子代理有独立中间件栈：审计必须逐个挂，否则只记到 Lead 的 task 调用
-            "middleware": [AuditMiddleware()],
+            # 子代理有独立中间件栈：审计与守卫都要逐个挂
+            "middleware": [AuditMiddleware(), LoopGuardMiddleware()],
         })
     return subagents
 
@@ -179,7 +182,10 @@ def build_agent(
         tools=tools,
         system_prompt=prompt,
         subagents=load_subagents(tools),
-        middleware=[AuditMiddleware()],
+        # 守卫栈（借鉴 deepseek-harness guard 设计）：重复同参检测+截止时间；
+        # 模型调用次数硬顶（单 run 80 次）作最后保险丝
+        middleware=[AuditMiddleware(), LoopGuardMiddleware(),
+                    ModelCallLimitMiddleware(run_limit=80, exit_behavior="end")],
         backend=build_backend(),
         interrupt_on=interrupts or None,
         checkpointer=checkpointer,
