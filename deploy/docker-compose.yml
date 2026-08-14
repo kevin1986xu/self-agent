@@ -33,7 +33,6 @@ services:
       MODEL_STRONG: ${MODEL_STRONG:-}
       MODEL_CHEAP: ${MODEL_CHEAP:-}
       UAV_MCP_API_KEY: ${UAV_MCP_API_KEY:-}
-      MCP_CONFIG_PATH: /app/config/mcp_config.json
       # 可观测（可选）：OTEL_TARGETS=LANGFUSE + LANGFUSE_* 三项
       OTEL_TARGETS: ${OTEL_TARGETS:-}
       LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-}
@@ -42,7 +41,7 @@ services:
       AUTH_TOKENS: ${AUTH_TOKENS:-}
     volumes:
       - workspace:/data/workspace
-      - ../config:/app/config:ro
+      - ../projects:/app/projects:ro
     ports:
       - "2027:2027"
 

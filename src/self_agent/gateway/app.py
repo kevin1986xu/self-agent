@@ -335,10 +335,9 @@ async def list_files():
     out = []
     if root.exists():
         for f in sorted(root.rglob("*")):
-            if f.is_file() and "skills" not in f.parts[:len(root.parts) + 1]:
+            rel_parts = f.relative_to(root).parts
+            if f.is_file() and "skills" not in rel_parts:  # 各项目的技能装配目录不算产物
                 rel = str(f.relative_to(root))
-                if rel.startswith(("skills/",)):
-                    continue
                 out.append({"path": rel, "size": f.stat().st_size,
                             "mtime": int(f.stat().st_mtime)})
     return {"files": out}

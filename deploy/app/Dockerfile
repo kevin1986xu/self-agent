@@ -12,9 +12,9 @@ RUN uv pip install --system -e . \
     && pip install --no-cache-dir \
        "aegra-api @ git+https://github.com/ibbybuilds/aegra#subdirectory=libs/aegra-api"
 
-COPY config ./config
+COPY projects ./projects
 COPY skills ./skills
-COPY graph_entry.py aegra.json ./
+COPY graph_entry.py aegra.json auth.py ./
 
 # 容器内运行时 execute 本身已在容器隔离内，SANDBOX_MODE 保持 local
 ENV WORKSPACE_ROOT=/data/workspace SANDBOX_MODE=local
