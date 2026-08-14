@@ -43,16 +43,23 @@ app = FastAPI(title="self-agent gateway")
 
 GATEWAY_ADMIN_TOKEN = os.environ.get("GATEWAY_ADMIN_TOKEN", "")
 # 豁免：渠道回调(自带验签)/健康/审批(渠道卡片按钮)/管理台页面外壳(数据仍走受保护 API)
-_PUBLIC_PREFIXES = ("/channels/", "/healthz", "/approvals", "/admin")
+_PUBLIC_PREFIXES = ("/channels/", "/healthz", "/approvals", "/admin", "/auth/", "/login")
 
 
 @app.middleware("http")
 async def _admin_guard(request: Request, call_next):
     if GATEWAY_ADMIN_TOKEN and not any(request.url.path.startswith(p) for p in _PUBLIC_PREFIXES):
-        if request.headers.get("X-Admin-Token") != GATEWAY_ADMIN_TOKEN:
-            from fastapi.responses import JSONResponse
+        tk = request.headers.get("X-Admin-Token", "")
+        if tk != GATEWAY_ADMIN_TOKEN:
+            from . import accounts
 
-            return JSONResponse({"detail": "需要 X-Admin-Token"}, status_code=401)
+            session = accounts.verify_session(tk) if tk else None
+            if not (session and session["role"] == "admin"):
+                from fastapi.responses import JSONResponse
+
+                return JSONResponse(
+                    {"detail": "需要 X-Admin-Token（管理令牌或 admin 账号的登录令牌）"},
+                    status_code=401)
     return await call_next(request)
 app.add_middleware(
     CORSMiddleware,
@@ -287,6 +294,41 @@ async def local_outbox(conv: str):
 @app.get("/healthz")
 async def healthz():
     return {"status": "ok"}
+
+
+@app.post("/auth/register")
+async def api_register(payload: dict):
+    from . import accounts
+
+    try:
+        info = accounts.register(payload.get("username", "").strip(), payload.get("password", ""),
+                                 invite_code=payload.get("invite_code"))
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    return {"ok": True, **info}
+
+
+@app.post("/auth/login")
+async def api_login(payload: dict):
+    from . import accounts
+
+    try:
+        return accounts.login(payload.get("username", "").strip(), payload.get("password", ""))
+    except ValueError as e:
+        raise HTTPException(401, str(e)) from e
+
+
+@app.post("/auth/logout")
+async def api_logout(payload: dict):
+    from . import accounts
+
+    accounts.logout(payload.get("token", ""))
+    return {"ok": True}
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page():
+    return (Path(__file__).parent / "login.html").read_text()
 
 
 @app.get("/projects")

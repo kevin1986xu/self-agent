@@ -27,11 +27,30 @@ def _registry() -> dict[str, dict]:
     return out
 
 
+_session_cache: dict[str, tuple[float, dict]] = {}  # token → (expire_ts, user)
+
+
+def _verify_db_session(token: str) -> dict | None:
+    """自助登录会话（gateway/accounts 签发）。60s 进程内缓存降 DB 压力。"""
+    import time
+
+    hit = _session_cache.get(token)
+    if hit and hit[0] > time.time():
+        return hit[1]
+    try:
+        from self_agent.gateway.accounts import verify_session
+
+        user = verify_session(token)
+    except Exception:  # noqa: BLE001 —— DB 不可用时不拦服务令牌路径
+        return None
+    if user:
+        _session_cache[token] = (time.time() + 60, user)
+    return user
+
+
 @auth.authenticate
 async def authenticate(headers: dict) -> dict:
     registry = _registry()
-    if not registry:  # 开发模式：未配置 token 即匿名放行
-        return {"identity": "anonymous", "permissions": [], "role": "member"}
 
     def _h(name: str) -> str:
         for k, v in headers.items():
@@ -41,8 +60,19 @@ async def authenticate(headers: dict) -> dict:
         return ""
 
     token = _h("authorization").removeprefix("Bearer ").strip() or _h("x-api-key")
+
+    # ① 服务令牌（环境变量配发：网关/CI 等机器身份）
     user = registry.get(token)
-    if not user:
-        raise Auth.exceptions.HTTPException(status_code=401, detail="无效或缺失的访问令牌")
-    return {"identity": user["identity"], "permissions": [user["role"]],
-            "role": user["role"], "display_name": user["identity"]}
+    if user:
+        return {"identity": user["identity"], "permissions": [user["role"]],
+                "role": user["role"], "display_name": user["identity"]}
+    # ② 自助登录会话（/login 注册登录签发）
+    session = _verify_db_session(token) if token else None
+    if session:
+        return {"identity": session["username"], "user_id": session["user_id"],
+                "permissions": [session["role"]], "role": session["role"],
+                "display_name": session["username"]}
+    # ③ 开发模式：完全未配置服务令牌时匿名放行
+    if not registry:
+        return {"identity": "anonymous", "permissions": [], "role": "member"}
+    raise Auth.exceptions.HTTPException(status_code=401, detail="无效或缺失的访问令牌")

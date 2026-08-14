@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>self-agent 登录</title>
+<style>
+* { box-sizing:border-box; margin:0; }
+body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; background:#f5f7fa;
+       display:flex; align-items:center; justify-content:center; min-height:100vh; color:#1a202c; }
+.card { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:32px; width:380px; }
+h1 { font-size:20px; color:#1f4e79; margin-bottom:4px; }
+p.sub { color:#718096; font-size:13px; margin-bottom:20px; }
+input { width:100%; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px;
+        font-size:14px; margin-bottom:12px; }
+button { width:100%; background:#1f4e79; color:#fff; border:0; border-radius:8px;
+         padding:11px; font-size:14.5px; cursor:pointer; }
+button.ghost { background:none; color:#1f4e79; margin-top:8px; }
+.msg { font-size:13px; margin:10px 0; min-height:18px; }
+.msg.err { color:#b32020; } .msg.ok { color:#0a7a3d; }
+.token-box { background:#f8fafc; border:1px dashed #cbd5e0; border-radius:8px; padding:12px;
+             font-family:monospace; font-size:12px; word-break:break-all; margin:12px 0; }
+.hint { font-size:12.5px; color:#718096; line-height:1.7; }
+#invite { display:none; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1 id="title">登录 self-agent</h1>
+  <p class="sub" id="sub">用你的账号获取访问令牌</p>
+  <div id="form">
+    <input id="u" placeholder="用户名" autocomplete="username">
+    <input id="p" type="password" placeholder="密码（至少 8 位）" autocomplete="current-password">
+    <input id="invite" placeholder="邀请码">
+    <div class="msg" id="msg"></div>
+    <button onclick="go()" id="btn">登 录</button>
+    <button class="ghost" onclick="toggle()" id="switch">没有账号？注册 →</button>
+  </div>
+  <div id="done" style="display:none">
+    <div class="msg ok">登录成功（<span id="who"></span>）</div>
+    <div class="token-box" id="tk"></div>
+    <button onclick="copyTk()">复制令牌</button>
+    <p class="hint" style="margin-top:14px">
+      · 对话界面：设置页的 <b>API Key</b> 栏粘贴此令牌<br>
+      · 管理台：已自动写入本浏览器，<a href="/admin">直接进入 →</a><br>
+      · 令牌 7 天有效，重新登录即续期
+    </p>
+  </div>
+</div>
+<script>
+let mode = "login";
+const $ = s => document.querySelector(s);
+function toggle() {
+  mode = mode === "login" ? "register" : "login";
+  $("#btn").textContent = mode === "login" ? "登 录" : "注 册";
+  $("#switch").textContent = mode === "login" ? "没有账号？注册 →" : "已有账号？登录 →";
+  $("#title").textContent = mode === "login" ? "登录 self-agent" : "注册账号";
+  $("#invite").style.display = mode === "register" ? "block" : "none";
+  $("#msg").textContent = "";
+}
+async function go() {
+  $("#msg").className = "msg";
+  const body = {username: $("#u").value, password: $("#p").value};
+  if (mode === "register") body.invite_code = $("#invite").value || undefined;
+  try {
+    let r = await fetch(`/auth/${mode}`, {method:"POST",
+      headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)});
+    let d = await r.json();
+    if (!r.ok) throw new Error(d.detail || r.status);
+    if (mode === "register") {
+      $("#msg").className = "msg ok"; $("#msg").textContent = "注册成功，请登录";
+      toggle(); return;
+    }
+    localStorage.setItem("adminToken", d.token);
+    $("#who").textContent = `${d.username} · ${d.role}`;
+    $("#tk").textContent = d.token;
+    $("#form").style.display = "none"; $("#done").style.display = "block";
+  } catch (e) { $("#msg").className = "msg err"; $("#msg").textContent = e.message; }
+}
+function copyTk() { navigator.clipboard.writeText($("#tk").textContent); }
+document.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+</script>
+</body>
+</html>

@@ -60,9 +60,14 @@ def _user_key(rt) -> str:
         if ctx.get("user_id"):
             return f"u{ctx['user_id']}"
         auth_user = ctx.get("langgraph_auth_user")
+        # 自助登录账号带 user_id 自定义字段 → 与渠道身份统一为 u<id>
+        uid = getattr(auth_user, "user_id", None) or (
+            auth_user.get("user_id") if isinstance(auth_user, dict) else None)
+        if uid:
+            return f"u{uid}"
         ident = getattr(auth_user, "identity", None) or (
             auth_user.get("identity") if isinstance(auth_user, dict) else None)
-        if ident:
+        if ident and ident != "anonymous":
             return f"id:{ident}"
     return "shared"
 
