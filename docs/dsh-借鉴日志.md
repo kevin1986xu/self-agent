@@ -5,6 +5,28 @@
 >
 > **上次审查 SHA：`47f943859b`（最近检查 2026-08-17，上游无新提交）**
 
+## 2026-08-17 接入层专项（用户点题：MCP/CLI 如何接入）
+
+**dsh 的接入形态**：① MCP 消费——每 server 一个插件实例，工具名带
+`mcp__<server>__<name>` 限定前缀（防跨服务器重名），配置改动热重连；
+② CLI 三形态——交互 profile / **headless 一次性**（跑完打印答案退出）/ web；
+③ ACP 协议——把 agent 暴露给程序化客户端 + 反向把外部 agent 当子代理接入。
+
+**已借鉴 → 落地**
+
+- **CLI 接入形态** → `src/self_agent/cli.py`（console script `self-agent`）：
+  `login`（令牌落 ~/.self-agent，0600）/ `run "任务" -p 项目`（headless，
+  待审批时 exit=4 供脚本分支）/ `chat`（REPL，审批口令直接输入）。
+  走网关 local 通道——留痕/审批/身份/项目路由全套复用，CLI 即一个终端渠道。
+  实测：headless 查询、-p 切项目（default 通用应答）、审批卡片 exit=4。
+
+**候选观察项（新增）**
+
+- 工具名 server 限定前缀：我们目前裸名，跨 MCP 同名会冲突——真冲突时再做
+  （需兼容 evalset 期望名与 subagents.json 工具清单）；
+- ACP：等编辑器/外部 agent 集成需求；subagent-acp 的「外部进程 agent 当
+  子代理」思路留意。
+
 ## 2026-08-14 首次审查（全库设计巡览）
 
 **已借鉴 → 落地**

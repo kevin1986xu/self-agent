@@ -18,6 +18,9 @@ dependencies = [
     "croniter>=6.2.4",
 ]
 
+[project.scripts]
+self-agent = "self_agent.cli:main"
+
 [dependency-groups]
 dev = [
     "langgraph-cli[inmem]>=0.4.31",
