@@ -16,6 +16,8 @@ dependencies = [
     "reportlab>=5.0.0",
     "pypdf>=6.15.0",
     "croniter>=6.2.4",
+    "fastapi>=0.141.1",
+    "uvicorn[standard]>=0.52.1",
 ]
 
 [project.scripts]
@@ -27,6 +29,9 @@ dev = [
     "pytest>=8",
     "pytest-asyncio>=0.24",
 ]
+server = [
+    "aegra-api",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -37,3 +42,6 @@ packages = ["src/self_agent"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+
+[tool.uv.sources]
+aegra-api = { git = "https://github.com/ibbybuilds/aegra", subdirectory = "libs/aegra-api" }
