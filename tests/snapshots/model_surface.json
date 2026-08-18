@@ -1,0 +1,133 @@
+{
+  "deepagents": "0.7.5",
+  "projects": {
+    "default": {
+      "knowledge_scope": "default",
+      "locked_tools": [],
+      "skills": [
+        "doc-skills"
+      ],
+      "subagents": {
+        "doc-writer": {
+          "model": "strong",
+          "tools": []
+        },
+        "research": {
+          "model": "cheap",
+          "tools": [
+            "browser_navigate",
+            "browser_navigate_back",
+            "browser_snapshot",
+            "browser_click",
+            "browser_type",
+            "browser_fill_form",
+            "browser_select_option",
+            "browser_press_key",
+            "browser_wait_for",
+            "browser_tabs",
+            "browser_console_messages",
+            "browser_close"
+          ]
+        }
+      },
+      "system_prompt": "你是一个通用工作助理，帮助用户完成研究、分析、文档产出等任务。复杂任务拆解后用 task 工具并行派给合适的子代理；需要查资料时优先用浏览器或知识库核实，不要凭记忆编造。\n\n工作方式（通用纪律）：\n- 复杂任务先用 write_todos 列计划，随执行更新状态；\n- 独立子任务用 task 工具并行派给子代理，自己做规划与汇总；简单查询直接调工具；\n- 工具返回错误时如实报告，不得编造数据；\n- 记忆：/memories/ 目录跨会话持久。用户明确的偏好用 write_file 记到\n  /memories/preferences.md；涉及个性化输出时先 read_file 查看该文件。\n\n回答使用中文。\n"
+    },
+    "uav": {
+      "knowledge_scope": "uav",
+      "locked_tools": [
+        "dispatch_drone",
+        "create_task_plan",
+        "take_off",
+        "create_zone",
+        "delete_zone",
+        "start_3d_modeling",
+        "create_scheduled_task",
+        "create_recurring_task",
+        "cancel_scheduled_task",
+        "reschedule_task",
+        "retry_failed_task",
+        "resume_from_breakpoint",
+        "takeoff_to_point",
+        "set_height_limit",
+        "debug_mode",
+        "charge_control"
+      ],
+      "skills": [
+        "doc-skills"
+      ],
+      "subagents": {
+        "data-analyst": {
+          "model": "cheap",
+          "tools": [
+            "list_media",
+            "get_media_link",
+            "list_flight_videos",
+            "get_camera_coverage",
+            "get_task_report",
+            "list_task_history",
+            "list_scheduled_tasks",
+            "get_schedule_conflicts",
+            "list_zones"
+          ]
+        },
+        "monitor": {
+          "model": "cheap",
+          "tools": [
+            "list_alerts",
+            "get_alert_detail",
+            "get_unhandled_count",
+            "get_device_health",
+            "get_dock_environment",
+            "get_telemetry_history",
+            "start_live",
+            "stop_live",
+            "set_live_quality",
+            "switch_camera",
+            "get_live_capacity"
+          ]
+        },
+        "research": {
+          "model": "cheap",
+          "tools": [
+            "browser_navigate",
+            "browser_navigate_back",
+            "browser_snapshot",
+            "browser_click",
+            "browser_type",
+            "browser_fill_form",
+            "browser_select_option",
+            "browser_press_key",
+            "browser_wait_for",
+            "browser_tabs",
+            "browser_console_messages",
+            "browser_close"
+          ]
+        },
+        "uav-ops": {
+          "model": "strong",
+          "tools": [
+            "query_plots",
+            "find_nearby_drones",
+            "get_drone_status",
+            "dispatch_drone",
+            "create_task_plan",
+            "get_plan_progress",
+            "generate_route",
+            "get_route_detail",
+            "explain_route",
+            "open_route_editor",
+            "preflight_check",
+            "check_weather",
+            "check_battery",
+            "check_route_obstacle",
+            "check_drone_obstacle",
+            "check_airspace",
+            "take_off",
+            "get_task_status"
+          ]
+        }
+      },
+      "system_prompt": "你是无人机作业智能体的主控（Lead Agent），负责图斑核查、飞行调度、告警监控与成果汇报。\n\n业务纪律：\n- 独立子任务用 task 工具并行派给子代理（飞控执行找 uav-ops、告警监控找 monitor、数据分析找 data-analyst、网页研究找 research）；\n- **紧急指令（急停、返航）立即调用对应工具执行，不要先查询状态、不要犹豫**；\n- 用户明确点名的操作（如调画质、开舱盖、排期），直接调用最贴合的专用工具完成；\n- 高危操作（派机、起飞、建删围栏等）系统会自动弹出人工确认，弹出后等待结果、不要重复发起；没弹确认的操作正常执行即可；\n- 工具返回\"已登记待确认单\"即视为该步已受理：不要再次调用同一工具，如实告知用户等待审批并继续其余任务；只有收到 [SYSTEM_CONFIRMATION] 带 confirm_token 的指令时，才携带该 token 重新执行对应操作。\n\n工作方式（通用纪律）：\n- 复杂任务先用 write_todos 列计划，随执行更新状态；\n- 独立子任务用 task 工具并行派给子代理，自己做规划与汇总；简单查询直接调工具；\n- 工具返回错误时如实报告，不得编造数据；\n- 记忆：/memories/ 目录跨会话持久。用户明确的偏好用 write_file 记到\n  /memories/preferences.md；涉及个性化输出时先 read_file 查看该文件。\n\n回答使用中文。\n"
+    }
+  }
+}

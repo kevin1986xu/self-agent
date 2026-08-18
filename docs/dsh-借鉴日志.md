@@ -3,7 +3,19 @@
 > 本地克隆：`vendor/deepseek-harness`（crontab 每日 09:17 自动 pull，日志 .pull.log）
 > 审查方法：`git -C vendor/deepseek-harness log --oneline <上次SHA>..HEAD`
 >
-> **上次审查 SHA：`47f943859b`（最近检查 2026-08-17，上游无新提交）**
+> **上次审查 SHA：`99f6f02fec`（2026-08-18）**
+
+## 2026-08-18 增量审查（111 提交，rc.7）
+
+**已借鉴 → 落地**：python-sdk 的「模型可见面快照」（#2462）→
+`tests/test_model_surface.py`：钉住每项目组装后系统提示词全文/锁定工具/
+子代理编制/技能组/deepagents 版本，漂移给完整 diff，UPDATE_SNAPSHOTS=1 更新
+（快照即合同，更新须 review）。动机：我们的回归失败多次源于提示面漂移。
+
+**看过不引入**：rich-content-bridge、web 卡片折叠、Safari/pwsh 修复（UI/平台
+特定）；maxtoken 一致性、大历史分页（Aegra/deepagents 已管）。
+**候选**：ask-user 结构化提问卡（agent 主动向用户提结构化问题的通道，
+比自由文本追问更好接 IM 卡片——等真实使用出现追问痛点再做）。
 
 ## 2026-08-17 接入层专项（用户点题：MCP/CLI 如何接入）
 
