@@ -3,7 +3,7 @@
 > 本地克隆：`vendor/deepseek-harness`（crontab 每日 09:17 自动 pull，日志 .pull.log）
 > 审查方法：`git -C vendor/deepseek-harness log --oneline <上次SHA>..HEAD`
 >
-> **上次审查 SHA：`99f6f02fec`（2026-08-18）**
+> **上次审查 SHA：`99f6f02fec`（最近检查 2026-08-19，上游无新提交）**
 
 ## 2026-08-18 增量审查（111 提交，rc.7）
 
