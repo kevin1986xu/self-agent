@@ -3,7 +3,21 @@
 > 本地克隆：`vendor/deepseek-harness`（crontab 每日 09:17 自动 pull，日志 .pull.log）
 > 审查方法：`git -C vendor/deepseek-harness log --oneline <上次SHA>..HEAD`
 >
-> **上次审查 SHA：`99f6f02fec`（最近检查 2026-08-19，上游无新提交）**
+> **上次审查 SHA：`141eb6fef8`（2026-08-20）**
+
+## 2026-08-20 增量审查（536 提交，rc.8）
+
+**本轮无落地项**，两条记档：
+
+- **Agent Teams（实验性）**：持久化对等多智能体——成员独立持久会话身份、
+  可恢复 mailbox（queued-minus-delivered + 目标侧去重键）、quiet/wakeup
+  两档投递、task 单调分配。与我们的临时子代理是不同物种；对应我们暂缓项
+  「用户自建 Agent/团队协作」的未来设计参考，mailbox 恢复语义值得抄。
+- **reasoning content 回传修复**（#2786）：推理型模型每轮需回传
+  reasoning_content——若将来切 DeepSeek/Qwen thinking 模型，OpenAI 兼容
+  链路要核对这点（langchain-openai 的支持状态届时验证）。
+
+其余大头为 web/subagent/code-runtime-python 修复与品牌构建杂项，不适用。
 
 ## 2026-08-18 增量审查（111 提交，rc.7）
 
